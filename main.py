@@ -193,6 +193,7 @@ def main():
     characters = {}
     parser = argparse.ArgumentParser(description='Idle RPG telegram bot.')
     parser.add_argument("--config", '-cfg', help="Path to config file", action="store", default="cfg\\main.json")
+    parser.add_argument("--test_users", help="Number of test users of each class created", action="store", default=None)
     args = parser.parse_args()
     config = Config(args.config)
 
@@ -232,6 +233,21 @@ def main():
             break
     out_channel.cancel()
     logger.info("Class list received")
+
+    if args.test_users is not None:
+        test_start_time = datetime.datetime.now()
+        cnt_users = 0
+        logger.info("Started create test users")
+        for i in range(int(args.test_users)):
+            for j in class_list:
+                cmd = {"cmd_type": CMD_CREATE_CHARACTER, "name": j + '_' + str(i), "class": j}
+                cnt_users += 1
+                enqueue_command(cmd)
+        test_finish_time = datetime.datetime.now()
+        logger.info("Finish create test users, was created {}. Started at {}, finish at {}".format(cnt_users,
+                                                                                                   test_start_time,
+                                                                                                   test_finish_time))
+
 
     updater.start_polling()
 
