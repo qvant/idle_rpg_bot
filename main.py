@@ -167,14 +167,15 @@ def cmd_response_callback(ch, method, properties, body):
     reply_markup = InlineKeyboardMarkup(main_keyboard())
     if chat_id is not None:
         updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("message"), reply_markup=reply_markup)
-        queue_logger.info("Sent message {0}, received from server to user {1}".format(msg.get("message"), chat_id))
+        if msg.get("cmd_type") == CMD_GET_CHARACTER_STATUS:
+            updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("char_info"), reply_markup=reply_markup)
+        else:
+            queue_logger.info("Sent message {0}, received from server to user {1}".format(msg.get("message"), chat_id))
         # clear current operations state, if any
         if chat_id in creation_process.keys():
             del creation_process[chat_id]
         if chat_id in deletion_process.keys():
             del deletion_process[chat_id]
-    if msg.get("cmd_type") == CMD_GET_CHARACTER_STATUS:
-        updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("char_info"), reply_markup=reply_markup)
 
 
 def main():
