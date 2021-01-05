@@ -1,0 +1,8 @@
+{
+  "CONFIG_PATH": "cfg\\main.json",
+  "CONFIG_RELOAD_TIME": 1,
+  "LOG_LEVEL": "INFO",
+  "QUEUE_HOST": "localhost",
+  "QUEUE_PORT": 5672,
+  "BOT_SECRET": ""
+}
