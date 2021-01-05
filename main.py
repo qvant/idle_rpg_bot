@@ -39,9 +39,12 @@ def class_keyboard():
 def main_keyboard():
     keyboard = [
         [InlineKeyboardButton("New character", callback_data=MAIN_MENU_CREATE),
-         InlineKeyboardButton("Get status", callback_data=MAIN_MENU_STATUS),
+         InlineKeyboardButton("About", callback_data=MAIN_MENU_ABOUT),
          InlineKeyboardButton("Delete character", callback_data=MAIN_MENU_DELETE),
-         ]
+         ],
+        [
+            InlineKeyboardButton("Get status", callback_data=MAIN_MENU_STATUS),
+        ]
     ]
 
     return keyboard
@@ -71,6 +74,14 @@ def delete(update, context):
     deletion_process[update.effective_chat.id] = {"stage": STAGE_CONFIRM_DELETION}
     context.bot.send_message(chat_id=update.effective_chat.id, text="Print 'CONFIRM' (all capitals) to continue")
     telegram_logger.info("Initialized character deletion from user {0}".format(update.effective_chat.id))
+
+
+def about(update, context):
+    global telegram_logger
+    keyboard = main_keyboard()
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=MENU_ABOUT_TEXT, reply_markup=reply_markup)
+    telegram_logger.info("Sent \"About\" to user {0}".format(update.effective_chat.id))
 
 
 def class_menu(update, context):
@@ -104,6 +115,8 @@ def main_menu(update,context):
         status(update, context)
     elif cur_item == MAIN_MENU_DELETE:
         delete(update, context)
+    elif cur_item == MAIN_MENU_ABOUT:
+        about(update, context)
     else:
         telegram_logger.error("Received unknown command {0} from user {1} in main menu".
                               format(cur_item, update.effective_chat.id))
@@ -160,16 +173,15 @@ def cmd_response_callback(ch, method, properties, body):
     global deletion_process
     global updater
     global queue_logger
-    queue_logger.info("Received command, started callback".format(body))
+    queue_logger.info("Received command " + str(body) + ", started callback")
     msg = json.loads(body)
     chat_id = msg.get("user_id")
-    logging.error(msg)
     reply_markup = InlineKeyboardMarkup(main_keyboard())
     if chat_id is not None:
-        updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("message"), reply_markup=reply_markup)
         if msg.get("cmd_type") == CMD_GET_CHARACTER_STATUS:
             updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("char_info"), reply_markup=reply_markup)
         else:
+            updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("message"), reply_markup=reply_markup)
             queue_logger.info("Sent message {0}, received from server to user {1}".format(msg.get("message"), chat_id))
         # clear current operations state, if any
         if chat_id in creation_process.keys():
@@ -240,7 +252,7 @@ def main():
         logger.info("Started create test users")
         for i in range(int(args.test_users)):
             for j in class_list:
-                cmd = {"cmd_type": CMD_CREATE_CHARACTER, "name": j + '_' + str(i), "class": j}
+                cmd = {"cmd_type": CMD_CREATE_CHARACTER, "name": j + '_' + str(i + 1), "class": j}
                 cnt_users += 1
                 enqueue_command(cmd)
         test_finish_time = datetime.datetime.now()
@@ -257,7 +269,8 @@ def main():
             logger.info("Received message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
             cmd_response_callback(None, method_frame, properties, body)
             out_channel.basic_ack(method_frame.delivery_tag)
-            logger.info("Received with delivery_tag {0} acknowledged".format(body, method_frame.delivery_tag))
+            logger.info("Received message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
+                        " acknowledged")
 
 
 if __name__ == '__main__':
