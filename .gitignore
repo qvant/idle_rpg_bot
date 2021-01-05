@@ -1,4 +1,4 @@
-./idea
+.idea/*
 logs/
 *.pyc
 cfg/main.json
