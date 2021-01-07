@@ -6,6 +6,7 @@ CONFIG_PARAM_NEW_PATH = "CONFIG_PATH"
 CONFIG_PARAM_CONFIG_RELOAD_TIME = "CONFIG_RELOAD_TIME"
 CONFIG_PARAM_BOT_SECRET = "BOT_SECRET"
 
+CMD_GET_CLASS_LIST = "get_class_list"
 CMD_CREATE_CHARACTER = "create_character"
 CMD_DELETE_CHARACTER = "delete_character"
 CMD_GET_CHARACTER_STATUS = "get_character_status"
@@ -14,6 +15,8 @@ QUEUE_NAME_INIT = "InitQueue"
 QUEUE_NAME_DICT = "DictionaryQueue"
 QUEUE_NAME_CMD = "CommandQueue"
 QUEUE_NAME_RESPONSES = "ResponsesQueue"
+
+QUEUE_APP_ID = "Telegram bot"  # second after main app
 
 MAIN_MENU_CREATE = "main_create"
 MAIN_MENU_STATUS = "main_status"

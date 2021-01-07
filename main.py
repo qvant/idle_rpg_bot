@@ -128,7 +128,10 @@ def enqueue_command(obj):
     global queue_logger
     msg_body = json.dumps(obj)
     out_channel.basic_publish(exchange="", routing_key=QUEUE_NAME_CMD,
-                              body=msg_body, properties=pika.BasicProperties(delivery_mode=2))
+                              body=msg_body, properties=pika.BasicProperties(delivery_mode=2,
+                                                                             content_type="application/json",
+                                                                             content_encoding="UTF-8",
+                                                                             app_id=QUEUE_APP_ID))
     queue_logger.info("Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD))
 
 
@@ -233,8 +236,13 @@ def main():
     out_channel.queue_declare(queue=QUEUE_NAME_INIT)
     out_channel.queue_declare(queue=QUEUE_NAME_CMD, durable=True)
     out_channel.queue_declare(queue=QUEUE_NAME_RESPONSES, durable=True)
+    out_channel.queue_declare(queue=QUEUE_NAME_DICT, durable=True)
 
-    out_channel.basic_publish(exchange="", routing_key=QUEUE_NAME_INIT, body="Give me class list, please")
+    msg = {"cmd_type": CMD_GET_CLASS_LIST}
+    out_channel.basic_publish(exchange="", routing_key=QUEUE_NAME_INIT, body=json.dumps(msg),
+                              properties=pika.BasicProperties(content_type="application/json",
+                                                              content_encoding="UTF-8",
+                                                              app_id=QUEUE_APP_ID))
 
     logger.info("Asked server for class list")
 
