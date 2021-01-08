@@ -127,12 +127,17 @@ def enqueue_command(obj):
     global out_channel
     global queue_logger
     msg_body = json.dumps(obj)
-    out_channel.basic_publish(exchange="", routing_key=QUEUE_NAME_CMD,
-                              body=msg_body, properties=pika.BasicProperties(delivery_mode=2,
-                                                                             content_type="application/json",
-                                                                             content_encoding="UTF-8",
-                                                                             app_id=QUEUE_APP_ID))
-    queue_logger.info("Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD))
+    try:
+        out_channel.basic_publish(exchange="", routing_key=QUEUE_NAME_CMD,
+                                  body=msg_body, properties=pika.BasicProperties(delivery_mode=2,
+                                                                                 content_type="application/json",
+                                                                                 content_encoding="UTF-8",
+                                                                                 app_id=QUEUE_APP_ID))
+        queue_logger.info("Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD))
+    except pika.exceptions.ChannelWrongStateError as exc:
+        queue_logger.critical("Error {2} when Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD, exc))
+        out_channel = get_mq_connect().channel()
+        queue_logger.critical("Connection restored")
 
 
 def echo(update, context):
@@ -193,6 +198,10 @@ def cmd_response_callback(ch, method, properties, body):
             del deletion_process[chat_id]
 
 
+def get_mq_connect():
+    return pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+
+
 def main():
     global class_list
     global creation_process
@@ -231,7 +240,7 @@ def main():
     dispatcher.add_handler(echo_handler)
     dispatcher.add_handler(class_menu_handler)
 
-    out_queue = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    out_queue = get_mq_connect()
     out_channel = out_queue.channel()
     out_channel.queue_declare(queue=QUEUE_NAME_INIT)
     out_channel.queue_declare(queue=QUEUE_NAME_CMD, durable=True)
@@ -268,11 +277,11 @@ def main():
                                                                                                    test_start_time,
                                                                                                    test_finish_time))
 
-
     updater.start_polling()
 
     logger.info("Start listen server responses")
-    for method_frame, properties, body in out_channel.consume(QUEUE_NAME_RESPONSES, inactivity_timeout=1):
+    for method_frame, properties, body in out_channel.consume(QUEUE_NAME_RESPONSES, inactivity_timeout=1,
+                                                              auto_ack=False):
         if body is not None:
             logger.info("Received message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
             cmd_response_callback(None, method_frame, properties, body)
