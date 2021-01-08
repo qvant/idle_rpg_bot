@@ -1,7 +1,7 @@
 import sys
 import logging
 from logging import INFO
-from logging.handlers import TimedRotatingFileHandler
+from logging.handlers import RotatingFileHandler
 
 FORMATTER = logging.Formatter("[%(levelname)s] [%(name)s] - [%(asctime)s]: %(message)s")
 LOG_DIR = "logs\\"
@@ -19,7 +19,7 @@ def get_console_handler(is_system=False):
 
 
 def get_file_handler(logger_name):
-    file_handler = TimedRotatingFileHandler(LOG_DIR + logger_name + ".log", when='midnight')
+    file_handler = RotatingFileHandler(LOG_DIR + logger_name + ".log", maxBytes=1024 * 1024, backupCount=10)
     file_handler.setFormatter(FORMATTER)
     return file_handler
 
