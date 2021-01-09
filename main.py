@@ -16,6 +16,7 @@ global characters
 global updater
 global queue_logger
 global telegram_logger
+global config
 
 
 def start(update, context):
@@ -124,6 +125,7 @@ def main_menu(update,context):
 def enqueue_command(obj):
     global out_channel
     global queue_logger
+    global config
     msg_body = json.dumps(obj)
     try:
         out_channel.basic_publish(exchange="", routing_key=QUEUE_NAME_CMD,
@@ -134,7 +136,7 @@ def enqueue_command(obj):
         queue_logger.info("Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD))
     except pika.exceptions.AMQPError as exc:
         queue_logger.critical("Error {2} when Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD, exc))
-        out_channel = get_mq_connect().channel()
+        out_channel = get_mq_connect().channel(config)
         queue_logger.critical("Connection restored")
 
 
@@ -196,8 +198,13 @@ def cmd_response_callback(ch, method, properties, body):
             del deletion_process[chat_id]
 
 
-def get_mq_connect():
-    return pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+def get_mq_connect(config):
+    if config.queue_password is None:
+        return pika.BlockingConnection(pika.ConnectionParameters(host=config.queue_host, port=config.queue_port))
+    else:
+        return pika.BlockingConnection(pika.ConnectionParameters(host=config.queue_host, port=config.queue_port,
+                                                                 credentials=pika.credentials.PlainCredentials(
+                                                                     config.queue_user, config.queue_password)))
 
 
 def main():
@@ -209,6 +216,7 @@ def main():
     global updater
     global queue_logger
     global telegram_logger
+    global config
     class_list = None
     creation_process = {}
     deletion_process = {}
@@ -223,7 +231,6 @@ def main():
     queue_logger = get_logger(LOG_QUEUE, config.log_level)
     telegram_logger = get_logger(LOG_TELEGRAM, config.log_level)
     set_basic_logging(config.log_level)
-    # todo keep secret safe (encrypt)
     updater = Updater(token=config.secret, use_context=True)
     dispatcher = updater.dispatcher
 
@@ -238,7 +245,7 @@ def main():
     dispatcher.add_handler(echo_handler)
     dispatcher.add_handler(class_menu_handler)
 
-    out_queue = get_mq_connect()
+    out_queue = get_mq_connect(config)
     out_channel = out_queue.channel()
     out_channel.queue_declare(queue=QUEUE_NAME_INIT)
     out_channel.queue_declare(queue=QUEUE_NAME_CMD, durable=True)
