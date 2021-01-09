@@ -1,5 +1,3 @@
-import logging
-from logging.handlers import *
 import json
 import datetime
 import pika
@@ -134,7 +132,7 @@ def enqueue_command(obj):
                                                                                  content_encoding="UTF-8",
                                                                                  app_id=QUEUE_APP_ID))
         queue_logger.info("Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD))
-    except pika.exceptions.ChannelWrongStateError as exc:
+    except pika.exceptions.AMQPError as exc:
         queue_logger.critical("Error {2} when Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD, exc))
         out_channel = get_mq_connect().channel()
         queue_logger.critical("Connection restored")
