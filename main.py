@@ -1,5 +1,6 @@
 import json
 import datetime
+import time
 import pika
 import argparse
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, CallbackQueryHandler
@@ -136,7 +137,8 @@ def enqueue_command(obj):
         queue_logger.info("Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD))
     except pika.exceptions.AMQPError as exc:
         queue_logger.critical("Error {2} when Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD, exc))
-        out_channel = get_mq_connect().channel(config)
+        queue = get_mq_connect().channel(config)
+        out_channel = queue.channel()
         queue_logger.critical("Connection restored")
 
 
@@ -217,6 +219,7 @@ def main():
     global queue_logger
     global telegram_logger
     global config
+
     class_list = None
     creation_process = {}
     deletion_process = {}
@@ -224,7 +227,10 @@ def main():
     parser = argparse.ArgumentParser(description='Idle RPG telegram bot.')
     parser.add_argument("--config", '-cfg', help="Path to config file", action="store", default="cfg//main.json")
     parser.add_argument("--test_users", help="Number of test users of each class created", action="store", default=None)
+    parser.add_argument("--delay", help="Number of test users of each class created", action="store", default=None)
     args = parser.parse_args()
+    if args.delay is not None:
+        time.sleep(args.delay)
     config = Config(args.config)
 
     logger = get_logger(LOG_MAIN, config.log_level)
