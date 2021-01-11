@@ -123,23 +123,23 @@ def main_menu(update,context):
         context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command")
 
 
-def enqueue_command(obj):
-    global out_channel
+def enqueue_command(obj, resend=False):
     global queue_logger
     global config
     msg_body = json.dumps(obj)
     try:
-        out_channel.basic_publish(exchange="", routing_key=QUEUE_NAME_CMD,
+        queue = get_mq_connect(config)
+        channel = queue.channel()
+        channel.basic_publish(exchange="", routing_key=QUEUE_NAME_CMD,
                                   body=msg_body, properties=pika.BasicProperties(delivery_mode=2,
                                                                                  content_type="application/json",
                                                                                  content_encoding="UTF-8",
                                                                                  app_id=QUEUE_APP_ID))
+        queue.close()
         queue_logger.info("Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD))
     except pika.exceptions.AMQPError as exc:
-        queue_logger.critical("Error {2} when Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD, exc))
-        queue = get_mq_connect().channel(config)
-        out_channel = queue.channel()
-        queue_logger.critical("Connection restored")
+            queue_logger.critical("Error {2} when Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD, exc))
+
 
 
 def echo(update, context):
@@ -236,7 +236,7 @@ def main():
     logger = get_logger(LOG_MAIN, config.log_level)
     queue_logger = get_logger(LOG_QUEUE, config.log_level)
     telegram_logger = get_logger(LOG_TELEGRAM, config.log_level)
-    set_basic_logging(config.log_level)
+    #set_basic_logging(config.log_level)
     updater = Updater(token=config.secret, use_context=True)
     dispatcher = updater.dispatcher
 
