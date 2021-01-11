@@ -222,7 +222,7 @@ def main():
     deletion_process = {}
     characters = {}
     parser = argparse.ArgumentParser(description='Idle RPG telegram bot.')
-    parser.add_argument("--config", '-cfg', help="Path to config file", action="store", default="cfg\\main.json")
+    parser.add_argument("--config", '-cfg', help="Path to config file", action="store", default="cfg//main.json")
     parser.add_argument("--test_users", help="Number of test users of each class created", action="store", default=None)
     args = parser.parse_args()
     config = Config(args.config)

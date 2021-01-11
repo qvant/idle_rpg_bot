@@ -4,7 +4,7 @@ from logging import INFO
 from logging.handlers import RotatingFileHandler
 
 FORMATTER = logging.Formatter("[%(levelname)s] [%(name)s] - [%(asctime)s]: %(message)s")
-LOG_DIR = "logs\\"
+LOG_DIR = "logs//"
 
 global log_level
 
@@ -37,4 +37,5 @@ def get_logger(logger_name, level=INFO, is_system=False):
 def set_basic_logging(logger_name, level=INFO):
     logging.basicConfig(format=FORMATTER,
                         level=level,
+                        validate=False,
                         handlers=[get_file_handler("System"), get_console_handler(True)])
