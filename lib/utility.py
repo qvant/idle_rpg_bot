@@ -38,4 +38,4 @@ def set_basic_logging(logger_name, level=INFO):
     logging.basicConfig(format=FORMATTER,
                         level=level,
                         validate=False,
-                        handlers=[get_file_handler("System"), get_console_handler(True)])
+                        handlers=[get_file_handler("System"), get_console_handler(True)], force=True)

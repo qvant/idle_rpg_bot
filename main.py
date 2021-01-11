@@ -230,7 +230,7 @@ def main():
     parser.add_argument("--delay", help="Number of test users of each class created", action="store", default=None)
     args = parser.parse_args()
     if args.delay is not None:
-        time.sleep(args.delay)
+        time.sleep(int(args.delay))
     config = Config(args.config)
 
     logger = get_logger(LOG_MAIN, config.log_level)
