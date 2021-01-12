@@ -1,13 +1,15 @@
-import json
-import datetime
-import time
-import pika
 import argparse
-from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, CallbackQueryHandler
+import datetime
+import json
+import time
+
+import pika
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from lib.consts import *
+from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, CallbackQueryHandler
+
 from lib.config import Config
-from lib.utility import get_logger, set_basic_logging
+from lib.consts import *
+from lib.utility import get_logger
 
 global class_list
 global out_channel
