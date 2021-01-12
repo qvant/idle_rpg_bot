@@ -31,7 +31,6 @@ class Config:
             self.logger.info("Secret in cypher text, start decryption")
             self.secret = decrypt_password(self.secret, self.server_name, self.queue_port)
             self.logger.info("Secret was decrypted")
-            self.logger.info(self.secret)
         if not is_password_encrypted(self.queue_password):
             self.logger.info("Password in plain text, start encryption")
             new_password = encrypt_password(self.queue_password, self.server_name, self.queue_port)
