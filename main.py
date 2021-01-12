@@ -32,9 +32,9 @@ def start(update, context):
 def class_keyboard():
     keyboard = [[]]
     for i in class_list:
-        if len(keyboard[len(keyboard)-1]) > 4:
+        if len(keyboard[len(keyboard) - 1]) > 4:
             keyboard.append([])
-        keyboard[len(keyboard)-1].append(InlineKeyboardButton(i, callback_data="class_" + str(i)),)
+        keyboard[len(keyboard) - 1].append(InlineKeyboardButton(i, callback_data="class_" + str(i)), )
     return keyboard
 
 
@@ -106,7 +106,7 @@ def class_menu(update, context):
                                 format(update.effective_chat.id))
 
 
-def main_menu(update,context):
+def main_menu(update, context):
     global telegram_logger
     cur_item = update["callback_query"]["data"]
     telegram_logger.info("Received command {0} from user {1} in main menu".
@@ -125,7 +125,7 @@ def main_menu(update,context):
         context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command")
 
 
-def enqueue_command(obj, resend=False):
+def enqueue_command(obj):
     global queue_logger
     global config
     msg_body = json.dumps(obj)
@@ -133,15 +133,14 @@ def enqueue_command(obj, resend=False):
         queue = get_mq_connect(config)
         channel = queue.channel()
         channel.basic_publish(exchange="", routing_key=QUEUE_NAME_CMD,
-                                  body=msg_body, properties=pika.BasicProperties(delivery_mode=2,
-                                                                                 content_type="application/json",
-                                                                                 content_encoding="UTF-8",
-                                                                                 app_id=QUEUE_APP_ID))
+                              body=msg_body, properties=pika.BasicProperties(delivery_mode=2,
+                                                                             content_type="application/json",
+                                                                             content_encoding="UTF-8",
+                                                                             app_id=QUEUE_APP_ID))
         queue.close()
         queue_logger.info("Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD))
     except pika.exceptions.AMQPError as exc:
-            queue_logger.critical("Error {2} when Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD, exc))
-
+        queue_logger.critical("Error {2} when Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD, exc))
 
 
 def echo(update, context):
@@ -157,7 +156,8 @@ def echo(update, context):
         creation_process[update.effective_chat.id]["stage"] = "confirm"
         creation_process[update.effective_chat.id]["name"] = update["message"]["text"]
         context.bot.send_message(chat_id=update.effective_chat.id, text="Let me check if name is free...")
-        cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_CREATE_CHARACTER, "name": creation_process[update.effective_chat.id].get("name"),
+        cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_CREATE_CHARACTER,
+               "name": creation_process[update.effective_chat.id].get("name"),
                "class": creation_process[update.effective_chat.id].get("class")}
         enqueue_command(cmd)
     elif update.effective_chat.id in deletion_process.keys():
@@ -238,7 +238,7 @@ def main():
     logger = get_logger(LOG_MAIN, config.log_level)
     queue_logger = get_logger(LOG_QUEUE, config.log_level)
     telegram_logger = get_logger(LOG_TELEGRAM, config.log_level)
-    #set_basic_logging(config.log_level)
+    # set_basic_logging(config.log_level)
     updater = Updater(token=config.secret, use_context=True)
     dispatcher = updater.dispatcher
 
