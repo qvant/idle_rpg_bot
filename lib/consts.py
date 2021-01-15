@@ -1,4 +1,3 @@
-CONFIG_PARAM_TURN_TIME = "TURN_TIME"
 CONFIG_PARAM_LOG_LEVEL = "LOG_LEVEL"
 CONFIG_PARAM_QUEUE_PASSWORD = "QUEUE_PASSWORD"
 CONFIG_PARAM_QUEUE_USER = "QUEUE_USER"
@@ -9,11 +8,18 @@ CONFIG_PARAM_CONFIG_RELOAD_TIME = "CONFIG_RELOAD_TIME"
 CONFIG_PARAM_BOT_SECRET = "BOT_SECRET"
 CONFIG_PARAM_BOT_SERVER_NAME = "BOT_SERVER_NAME"
 CONFIG_PARAM_SECRET_CONST = "Fk34c03"
+CONFIG_PARAM_ADMIN_LIST = "ADMIN_ACCOUNTS"
 
 CMD_GET_CLASS_LIST = "get_class_list"
+CMD_SET_CLASS_LIST = "set_class_list"
 CMD_CREATE_CHARACTER = "create_character"
 CMD_DELETE_CHARACTER = "delete_character"
 CMD_GET_CHARACTER_STATUS = "get_character_status"
+CMD_SERVER_SHUTDOWN_IMMEDIATE = "shutdown_immediate"
+CMD_SERVER_SHUTDOWN_NORMAL = "shutdown_normal"
+CMD_GET_SERVER_STATS = "get_server_stats"
+CMD_SET_SERVER_STATS = "server_stats"
+CMD_SERVER_OK = "server_ok"
 
 QUEUE_NAME_INIT = "InitQueue"
 QUEUE_NAME_DICT = "DictionaryQueue"
@@ -26,6 +32,14 @@ MAIN_MENU_CREATE = "main_create"
 MAIN_MENU_STATUS = "main_status"
 MAIN_MENU_DELETE = "main_delete"
 MAIN_MENU_ABOUT = "main_about"
+MAIN_MENU_ADMIN = "main_admin"
+
+
+ADMIN_MENU_STATS = "admin_stats"
+ADMIN_MENU_SHUTDOWN_BASIC = "admin_shutdown_basic"
+SHUTDOWN_MENU_NORMAL = "shutdown_normal"
+SHUTDOWN_MENU_IMMEDIATE = "shutdown_immediate"
+SHUTDOWN_MENU_BOT = "shutdown_bot"
 
 MENU_ABOUT_TEXT = "This bot allow to play in ZPG (https://en.wikipedia.org/wiki/Zero-player_game) \"Idle RPG\", " \
                   "inspired " \

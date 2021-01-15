@@ -40,8 +40,8 @@ class Config:
             self.logger.info("Password in cypher text, start decryption")
             self.queue_password = decrypt_password(self.queue_password, self.server_name, self.queue_port)
             self.logger.info("Password was decrypted")
-        self.turn_time = config.get(CONFIG_PARAM_TURN_TIME)
         self.log_level = config.get(CONFIG_PARAM_LOG_LEVEL)
+        self.admin_list = config.get(CONFIG_PARAM_ADMIN_LIST)
         self.logger.setLevel(self.log_level)
 
         if config.get(CONFIG_PARAM_NEW_PATH) is not None:

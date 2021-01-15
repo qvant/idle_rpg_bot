@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import json
+import sys
 import time
 
 import pika
@@ -20,11 +21,12 @@ global updater
 global queue_logger
 global telegram_logger
 global config
+global is_shutdown
 
 
 def start(update, context):
     global telegram_logger
-    reply_markup = InlineKeyboardMarkup(main_keyboard())
+    reply_markup = InlineKeyboardMarkup(main_keyboard(update.effective_chat.id))
     context.bot.send_message(chat_id=update.effective_chat.id, text="I'm idle rpg bot", reply_markup=reply_markup)
     telegram_logger.info("Proceed start command from user {0}".format(update.effective_chat.id))
 
@@ -38,7 +40,8 @@ def class_keyboard():
     return keyboard
 
 
-def main_keyboard():
+def main_keyboard(chat_id):
+    global config
     keyboard = [
         [InlineKeyboardButton("New character", callback_data=MAIN_MENU_CREATE),
          InlineKeyboardButton("About", callback_data=MAIN_MENU_ABOUT),
@@ -46,7 +49,33 @@ def main_keyboard():
          ],
         [
             InlineKeyboardButton("Get status", callback_data=MAIN_MENU_STATUS),
-        ]
+        ],
+    ]
+    if chat_id in config.admin_list:
+        keyboard.append(
+            [
+                InlineKeyboardButton("Admin...", callback_data=MAIN_MENU_ADMIN),
+            ]
+        )
+
+    return keyboard
+
+
+def admin_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("Server stats", callback_data=ADMIN_MENU_STATS),
+         InlineKeyboardButton("Shutdown...", callback_data=ADMIN_MENU_SHUTDOWN_BASIC),
+         ]
+    ]
+
+    return keyboard
+
+
+def shutdown_keyboard():
+    keyboard = [
+        [InlineKeyboardButton("Shutdown normal", callback_data=SHUTDOWN_MENU_NORMAL),
+         InlineKeyboardButton("Shutdown immediate", callback_data=SHUTDOWN_MENU_IMMEDIATE),
+         InlineKeyboardButton("Shutdown bot", callback_data=SHUTDOWN_MENU_BOT), ]
     ]
 
     return keyboard
@@ -80,10 +109,82 @@ def delete(update, context):
 
 def about(update, context):
     global telegram_logger
-    keyboard = main_keyboard()
+    keyboard = main_keyboard(update.effective_chat.id)
     reply_markup = InlineKeyboardMarkup(keyboard)
     context.bot.send_message(chat_id=update.effective_chat.id, text=MENU_ABOUT_TEXT, reply_markup=reply_markup)
     telegram_logger.info("Sent \"About\" to user {0}".format(update.effective_chat.id))
+
+
+def admin(update, context):
+    global telegram_logger
+    global config
+    if update.effective_chat.id in config.admin_list:
+        keyboard = admin_keyboard()
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Admin panel", reply_markup=reply_markup)
+        telegram_logger.info("Sent \"Admin menu\" to user {0}".format(update.effective_chat.id))
+    else:
+        telegram_logger.error("Illegal access to \"Admin menu\" from user {0}".format(update.effective_chat.id))
+
+
+def shutdown(update, context):
+    global telegram_logger
+    global config
+    if update.effective_chat.id in config.admin_list:
+        keyboard = shutdown_keyboard()
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Shutdown panel", reply_markup=reply_markup)
+        telegram_logger.info("Sent \"shutdown menu\" to user {0}".format(update.effective_chat.id))
+    else:
+        telegram_logger.error("Illegal access to \"shutdown menu\" from user {0}".format(update.effective_chat.id))
+
+
+def ask_server_stats(update, context):
+    global telegram_logger
+    global config
+    if update.effective_chat.id in config.admin_list:
+        cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_GET_SERVER_STATS}
+        enqueue_command(cmd, True)
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Server stats requested",)
+        telegram_logger.info("Sent server stats request from user {0}".format(update.effective_chat.id))
+    else:
+        telegram_logger.error("Illegal access ti \"ask_server_stats\" from user {0}".format(update.effective_chat.id))
+
+
+def send_shutdown_immediate(update, context):
+    global telegram_logger
+    global config
+    if update.effective_chat.id in config.admin_list:
+        cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_SERVER_SHUTDOWN_IMMEDIATE}
+        enqueue_command(cmd, True)
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Sent command on immediate shutdown",)
+        telegram_logger.info("Sent command on immediate shutdown from user {0}".format(update.effective_chat.id))
+    else:
+        telegram_logger.error("Illegal access ti \"send_shutdown_immediate\" from user {0}".format(update.effective_chat.id))
+
+
+def send_shutdown_bot(update, context):
+    global telegram_logger
+    global config
+    global is_shutdown
+    if update.effective_chat.id in config.admin_list:
+        telegram_logger.info("Shutdown requested")
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Ok", )
+        is_shutdown = True
+    else:
+        telegram_logger.error("Illegal access ti \"send_shutdown_bot\" from user {0}".format(update.effective_chat.id))
+
+
+def send_shutdown_normal(update, context):
+    global telegram_logger
+    global config
+    if update.effective_chat.id in config.admin_list:
+        cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_SERVER_SHUTDOWN_NORMAL}
+        enqueue_command(cmd, True)
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Sent command on shutdown",)
+        telegram_logger.info("Sent command on shutdown from user {0}".format(update.effective_chat.id))
+    else:
+        telegram_logger.error("Illegal access ti \"send_shutdown_normal\" from user {0}".format(update.effective_chat.id))
 
 
 def class_menu(update, context):
@@ -108,6 +209,7 @@ def class_menu(update, context):
 
 def main_menu(update, context):
     global telegram_logger
+    global config
     cur_item = update["callback_query"]["data"]
     telegram_logger.info("Received command {0} from user {1} in main menu".
                          format(cur_item, update.effective_chat.id))
@@ -119,28 +221,70 @@ def main_menu(update, context):
         delete(update, context)
     elif cur_item == MAIN_MENU_ABOUT:
         about(update, context)
+    elif cur_item == MAIN_MENU_ADMIN:
+        if update.effective_chat.id in config.admin_list:
+            admin(update, context)
+        else:
+            telegram_logger.error("Received admin command {0} from ordinary user {1} in main menu".
+                                  format(cur_item, update.effective_chat.id))
     else:
         telegram_logger.error("Received unknown command {0} from user {1} in main menu".
                               format(cur_item, update.effective_chat.id))
         context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command")
 
 
-def enqueue_command(obj):
+def admin_menu(update, context):
+    global telegram_logger
+    cur_item = update["callback_query"]["data"]
+    telegram_logger.info("Received command {0} from user {1} in admin menu".
+                         format(cur_item, update.effective_chat.id))
+    if cur_item == ADMIN_MENU_STATS:
+        ask_server_stats(update, context)
+    elif cur_item == ADMIN_MENU_SHUTDOWN_BASIC:
+        shutdown(update, context)
+    else:
+        telegram_logger.error("Received unknown command {0} from user {1} in admin menu".
+                              format(cur_item, update.effective_chat.id))
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command")
+
+
+def shutdown_menu(update, context):
+    global telegram_logger
+    cur_item = update["callback_query"]["data"]
+    telegram_logger.info("Received command {0} from user {1} in shutdown menu".
+                         format(cur_item, update.effective_chat.id))
+    if cur_item == SHUTDOWN_MENU_NORMAL:
+        send_shutdown_normal(update, context)
+    elif cur_item == SHUTDOWN_MENU_IMMEDIATE:
+        send_shutdown_immediate(update, context)
+    elif cur_item == SHUTDOWN_MENU_BOT:
+        send_shutdown_bot(update, context)
+    else:
+        telegram_logger.error("Received unknown command {0} from user {1} in shutdown menu".
+                              format(cur_item, update.effective_chat.id))
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command")
+
+
+def enqueue_command(obj, system=False):
     global queue_logger
     global config
+    if system:
+        queue_name = QUEUE_NAME_INIT
+    else:
+        queue_name = QUEUE_NAME_CMD
     msg_body = json.dumps(obj)
     try:
         queue = get_mq_connect(config)
         channel = queue.channel()
-        channel.basic_publish(exchange="", routing_key=QUEUE_NAME_CMD,
+        channel.basic_publish(exchange="", routing_key=queue_name,
                               body=msg_body, properties=pika.BasicProperties(delivery_mode=2,
                                                                              content_type="application/json",
                                                                              content_encoding="UTF-8",
                                                                              app_id=QUEUE_APP_ID))
         queue.close()
-        queue_logger.info("Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD))
+        queue_logger.info("Sent command {0} in queue {1}".format(msg_body, queue))
     except pika.exceptions.AMQPError as exc:
-        queue_logger.critical("Error {2} when Sent command {0} in queue {1}".format(msg_body, QUEUE_NAME_CMD, exc))
+        queue_logger.critical("Error {2} when Sent command {0} in queue {1}".format(msg_body, queue_name, exc))
 
 
 def echo(update, context):
@@ -177,7 +321,27 @@ def echo(update, context):
 
 def class_list_callback(ch, method, properties, body):
     global class_list
-    class_list = json.loads(body)
+    class_list = json.loads(body).get("class_list")
+
+
+def dict_response_callback(ch, method, properties, body):
+    global queue_logger
+    queue_logger.info("Received server command " + str(body) + ", started callback")
+    msg = json.loads(body)
+    cmd_type = msg.get("cmd_type")
+    chat_id = msg.get("user_id")
+    if cmd_type == CMD_SET_CLASS_LIST:
+        class_list_callback(ch, method, properties, body)
+    elif cmd_type == CMD_SET_SERVER_STATS:
+        reply_markup = InlineKeyboardMarkup(admin_keyboard())
+        updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("server_info"), reply_markup=reply_markup)
+    elif cmd_type == CMD_SERVER_OK:
+        reply_markup = InlineKeyboardMarkup(admin_keyboard())
+        updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg, reply_markup=reply_markup)
+    else:
+        if chat_id is not None:
+            updater.dispatcher.bot.send_message(chat_id=chat_id, text="Unknown message".format(msg))
+        queue_logger.error("Received unknown server command " + str(body) + ", started callback")
 
 
 def cmd_response_callback(ch, method, properties, body):
@@ -188,7 +352,7 @@ def cmd_response_callback(ch, method, properties, body):
     queue_logger.info("Received command " + str(body) + ", started callback")
     msg = json.loads(body)
     chat_id = msg.get("user_id")
-    reply_markup = InlineKeyboardMarkup(main_keyboard())
+    reply_markup = InlineKeyboardMarkup(main_keyboard(chat_id))
     if chat_id is not None:
         if msg.get("cmd_type") == CMD_GET_CHARACTER_STATUS:
             updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("char_info"), reply_markup=reply_markup)
@@ -221,7 +385,9 @@ def main():
     global queue_logger
     global telegram_logger
     global config
+    global is_shutdown
 
+    is_shutdown = False
     class_list = None
     creation_process = {}
     deletion_process = {}
@@ -246,12 +412,16 @@ def main():
     create_handler = CommandHandler('create', create)
     class_menu_handler = CallbackQueryHandler(class_menu, pattern="class_")
     main_menu_handler = CallbackQueryHandler(main_menu, pattern="main_")
+    admin_menu_handler = CallbackQueryHandler(admin_menu, pattern="admin_")
+    shutdown_menu_handler = CallbackQueryHandler(shutdown_menu, pattern="shutdown_")
     echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(create_handler)
     dispatcher.add_handler(main_menu_handler)
     dispatcher.add_handler(echo_handler)
     dispatcher.add_handler(class_menu_handler)
+    dispatcher.add_handler(admin_menu_handler)
+    dispatcher.add_handler(shutdown_menu_handler)
 
     out_queue = get_mq_connect(config)
     out_channel = out_queue.channel()
@@ -268,7 +438,7 @@ def main():
 
     logger.info("Asked server for class list")
 
-    out_channel.basic_consume(queue=QUEUE_NAME_DICT, on_message_callback=class_list_callback, auto_ack=True)
+    out_channel.basic_consume(queue=QUEUE_NAME_DICT, on_message_callback=dict_response_callback, auto_ack=True)
 
     for method_frame, properties, body in out_channel.consume(QUEUE_NAME_DICT, inactivity_timeout=1):
         if class_list is not None:
@@ -293,14 +463,35 @@ def main():
     updater.start_polling()
 
     logger.info("Start listen server responses")
-    for method_frame, properties, body in out_channel.consume(QUEUE_NAME_RESPONSES, inactivity_timeout=1,
-                                                              auto_ack=False):
-        if body is not None:
-            logger.info("Received message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
-            cmd_response_callback(None, method_frame, properties, body)
-            out_channel.basic_ack(method_frame.delivery_tag)
-            logger.info("Received message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
-                        " acknowledged")
+    while True:
+        for method_frame, properties, body in out_channel.consume(QUEUE_NAME_RESPONSES, inactivity_timeout=5,
+                                                                  auto_ack=False):
+            if body is not None:
+                logger.info("Received message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
+                cmd_response_callback(None, method_frame, properties, body)
+                out_channel.basic_ack(method_frame.delivery_tag)
+                logger.info("Received message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
+                            " acknowledged")
+            else:
+                logger.info("No more messages in {}".format(QUEUE_NAME_RESPONSES))
+                out_channel.cancel()
+                break
+        for method_frame, properties, body in out_channel.consume(QUEUE_NAME_DICT, inactivity_timeout=5,
+                                                                  auto_ack=False):
+            if body is not None:
+                logger.info("Received message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
+                cmd_response_callback(None, method_frame, properties, body)
+                out_channel.basic_ack(method_frame.delivery_tag)
+                logger.info("Received message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
+                            " acknowledged")
+            else:
+                logger.info("No more messages in {}".format(QUEUE_NAME_DICT))
+                out_channel.cancel()
+                break
+        # should be in QUEUE_NAME_DICT listener, but to make things easier put it here
+        if is_shutdown:
+            updater.stop()
+            sys.exit(0)
 
 
 if __name__ == '__main__':

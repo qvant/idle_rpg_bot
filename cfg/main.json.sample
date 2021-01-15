@@ -6,6 +6,7 @@
   "QUEUE_USER": "",
   "QUEUE_HOST": "localhost",
   "QUEUE_PORT": 5672,
+  "ADMIN_ACCOUNTS": [],
   "BOT_SECRET": "",
   "BOT_SERVER_NAME": ""
 }
