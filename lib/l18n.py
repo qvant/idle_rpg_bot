@@ -4,6 +4,7 @@ import codecs
 DEFAULT_LOCALE = 'english'
 
 
+# TODO: replace for gettext
 class L18n:
     # Class for translation messages to chosen language
     def __init__(self):
