@@ -538,10 +538,10 @@ def main():
         for method_frame, properties, body in out_channel.consume(QUEUE_NAME_RESPONSES, inactivity_timeout=5,
                                                                   auto_ack=False):
             if body is not None:
-                logger.info("Received message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
+                logger.info("Received user message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
                 cmd_response_callback(None, method_frame, properties, body)
                 out_channel.basic_ack(method_frame.delivery_tag)
-                logger.info("Received message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
+                logger.info("Received user message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
                             " acknowledged")
             else:
                 logger.info("No more messages in {}".format(QUEUE_NAME_RESPONSES))
@@ -550,10 +550,10 @@ def main():
         for method_frame, properties, body in out_channel.consume(QUEUE_NAME_DICT, inactivity_timeout=5,
                                                                   auto_ack=False):
             if body is not None:
-                logger.info("Received message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
-                cmd_response_callback(None, method_frame, properties, body)
+                logger.info("Received server message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
+                dict_response_callback(None, method_frame, properties, body)
                 out_channel.basic_ack(method_frame.delivery_tag)
-                logger.info("Received message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
+                logger.info("Received server message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
                             " acknowledged")
             else:
                 logger.info("No more messages in {}".format(QUEUE_NAME_DICT))
