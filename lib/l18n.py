@@ -27,6 +27,9 @@ class L18n:
             self.alternative = L18n()
             self.alternative.set_locale(DEFAULT_LOCALE)
 
+    def add_message(self, msg_type, msg_text):
+        self.msg_map[msg_type] = msg_text
+
     def get_message(self, msg_type):
         if msg_type in self.msg_map.keys():
             msg = self.msg_map[msg_type]

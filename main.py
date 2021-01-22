@@ -57,12 +57,12 @@ def start(update, context):
     telegram_logger.info("Proceed start command from user {0}".format(update.effective_chat.id))
 
 
-def class_keyboard():
+def class_keyboard(trans):
     keyboard = [[]]
     for i in class_list:
         if len(keyboard[len(keyboard) - 1]) > 4:
             keyboard.append([])
-        keyboard[len(keyboard) - 1].append(InlineKeyboardButton(i, callback_data="class_" + str(i)), )
+        keyboard[len(keyboard) - 1].append(InlineKeyboardButton(trans.get_message(i), callback_data="class_" + str(i)), )
     return keyboard
 
 
@@ -122,7 +122,7 @@ def create(update, context):
     global telegram_logger
     trans = get_locale(update)
     msg = trans.get_message(M_CHOOSE_CLASS)
-    keyboard = class_keyboard()
+    keyboard = class_keyboard(trans)
     reply_markup = InlineKeyboardMarkup(keyboard)
     creation_process[update.effective_chat.id] = {"stage": STAGE_SELECT_CLASS}
     context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
@@ -247,7 +247,7 @@ def class_menu(update, context):
         trans = get_locale(update)
         msg = trans.get_message(M_ENTER_NAME)
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg.
-                                 format(char_class))
+                                 format(trans.get_message(char_class)))
         telegram_logger.info("Character creation by user {0} advanced to name input stage".
                              format(update.effective_chat.id))
     else:
@@ -377,7 +377,14 @@ def echo(update, context):
 
 def class_list_callback(ch, method, properties, body):
     global class_list
-    class_list = json.loads(body).get("class_list")
+    global translations
+    buf = json.loads(body).get("class_list")
+    class_list = []
+    for i in buf:
+        class_list.append(i)
+        for j in buf[i]:
+            if j in translations.keys():
+                translations[j].add_message(i, buf[i][j])
 
 
 def dict_response_callback(ch, method, properties, body):
