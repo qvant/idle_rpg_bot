@@ -535,30 +535,35 @@ def main():
 
     logger.info("Start listen server responses")
     while True:
-        for method_frame, properties, body in out_channel.consume(QUEUE_NAME_RESPONSES, inactivity_timeout=5,
-                                                                  auto_ack=False):
-            if body is not None:
-                logger.info("Received user message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
-                cmd_response_callback(None, method_frame, properties, body)
-                out_channel.basic_ack(method_frame.delivery_tag)
-                logger.info("Received user message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
-                            " acknowledged")
-            else:
-                logger.info("No more messages in {}".format(QUEUE_NAME_RESPONSES))
-                out_channel.cancel()
-                break
-        for method_frame, properties, body in out_channel.consume(QUEUE_NAME_DICT, inactivity_timeout=5,
-                                                                  auto_ack=False):
-            if body is not None:
-                logger.info("Received server message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
-                dict_response_callback(None, method_frame, properties, body)
-                out_channel.basic_ack(method_frame.delivery_tag)
-                logger.info("Received server message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
-                            " acknowledged")
-            else:
-                logger.info("No more messages in {}".format(QUEUE_NAME_DICT))
-                out_channel.cancel()
-                break
+        try:
+            for method_frame, properties, body in out_channel.consume(QUEUE_NAME_RESPONSES, inactivity_timeout=5,
+                                                                      auto_ack=False):
+                if body is not None:
+                    logger.info("Received user message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
+                    cmd_response_callback(None, method_frame, properties, body)
+                    out_channel.basic_ack(method_frame.delivery_tag)
+                    logger.info("Received user message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
+                                " acknowledged")
+                else:
+                    logger.info("No more messages in {}".format(QUEUE_NAME_RESPONSES))
+                    out_channel.cancel()
+                    break
+            for method_frame, properties, body in out_channel.consume(QUEUE_NAME_DICT, inactivity_timeout=5,
+                                                                      auto_ack=False):
+                if body is not None:
+                    logger.info("Received server message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
+                    dict_response_callback(None, method_frame, properties, body)
+                    out_channel.basic_ack(method_frame.delivery_tag)
+                    logger.info("Received server message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
+                                " acknowledged")
+                else:
+                    logger.info("No more messages in {}".format(QUEUE_NAME_DICT))
+                    out_channel.cancel()
+                    break
+        except pika.exceptions.AMQPError as exc:
+            logger.critical("Error {0} when consume in queue, reconnect.".format(exc))
+            out_queue = get_mq_connect(config)
+            out_channel = out_queue.channel()
         # should be in QUEUE_NAME_DICT listener, but to make things easier put it here
         if is_shutdown:
             updater.stop()
