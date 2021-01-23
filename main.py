@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import json
+import os
 import sys
 import time
 
@@ -10,6 +11,8 @@ from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, Callb
 
 from lib.config import Config
 from lib.consts import *
+from lib.l18n import L18n
+from lib.messages import *
 from lib.utility import get_logger
 
 global class_list
@@ -22,60 +25,84 @@ global queue_logger
 global telegram_logger
 global config
 global is_shutdown
+global user_locales
+global translations
+
+
+def get_locale(update, chat_id=None):
+    global user_locales
+    global translations
+    if update is not None or chat_id is not None:
+        if chat_id is None:
+            chat_id = update.effective_chat.id
+        locale = user_locales.get(chat_id)
+        if locale is None and update is not None:
+            if update.callback_query is not None:
+                locale = update.callback_query.from_user.language_code
+            else:
+                locale = update.message.from_user.language_code
+            user_locales[chat_id] = locale
+
+        if locale in translations.keys():
+            return translations[locale]
+    return translations['ru']
 
 
 def start(update, context):
     global telegram_logger
-    reply_markup = InlineKeyboardMarkup(main_keyboard(update.effective_chat.id))
-    context.bot.send_message(chat_id=update.effective_chat.id, text="I'm idle rpg bot", reply_markup=reply_markup)
+    trans = get_locale(update)
+    msg = trans.get_message(M_ABOUT_ME)
+    reply_markup = InlineKeyboardMarkup(main_keyboard(update.effective_chat.id, trans))
+    context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
     telegram_logger.info("Proceed start command from user {0}".format(update.effective_chat.id))
 
 
-def class_keyboard():
+def class_keyboard(trans):
     keyboard = [[]]
     for i in class_list:
         if len(keyboard[len(keyboard) - 1]) > 4:
             keyboard.append([])
-        keyboard[len(keyboard) - 1].append(InlineKeyboardButton(i, callback_data="class_" + str(i)), )
+        keyboard[len(keyboard) - 1].append(InlineKeyboardButton(trans.get_message(i),
+                                                                callback_data="class_" + str(i)), )
     return keyboard
 
 
-def main_keyboard(chat_id):
+def main_keyboard(chat_id, trans):
     global config
     keyboard = [
-        [InlineKeyboardButton("New character", callback_data=MAIN_MENU_CREATE),
-         InlineKeyboardButton("About", callback_data=MAIN_MENU_ABOUT),
-         InlineKeyboardButton("Delete character", callback_data=MAIN_MENU_DELETE),
+        [InlineKeyboardButton(trans.get_message(M_NEW_CHARACTER), callback_data=MAIN_MENU_CREATE),
+         InlineKeyboardButton(trans.get_message(M_ABOUT_LABEL), callback_data=MAIN_MENU_ABOUT),
+         InlineKeyboardButton(trans.get_message(M_DELETE_CHARACTER), callback_data=MAIN_MENU_DELETE),
          ],
         [
-            InlineKeyboardButton("Get status", callback_data=MAIN_MENU_STATUS),
+            InlineKeyboardButton(trans.get_message(M_GET_CHARACTER), callback_data=MAIN_MENU_STATUS),
         ],
     ]
     if chat_id in config.admin_list:
         keyboard.append(
             [
-                InlineKeyboardButton("Admin...", callback_data=MAIN_MENU_ADMIN),
+                InlineKeyboardButton(trans.get_message(M_ADMIN_LABEL), callback_data=MAIN_MENU_ADMIN),
             ]
         )
 
     return keyboard
 
 
-def admin_keyboard():
+def admin_keyboard(trans):
     keyboard = [
-        [InlineKeyboardButton("Server stats", callback_data=ADMIN_MENU_STATS),
-         InlineKeyboardButton("Shutdown...", callback_data=ADMIN_MENU_SHUTDOWN_BASIC),
+        [InlineKeyboardButton(trans.get_message(M_SERVER_STATS), callback_data=ADMIN_MENU_STATS),
+         InlineKeyboardButton(trans.get_message(M_SHUTDOWN_LABEL), callback_data=ADMIN_MENU_SHUTDOWN_BASIC),
          ]
     ]
 
     return keyboard
 
 
-def shutdown_keyboard():
+def shutdown_keyboard(trans):
     keyboard = [
-        [InlineKeyboardButton("Shutdown normal", callback_data=SHUTDOWN_MENU_NORMAL),
-         InlineKeyboardButton("Shutdown immediate", callback_data=SHUTDOWN_MENU_IMMEDIATE),
-         InlineKeyboardButton("Shutdown bot", callback_data=SHUTDOWN_MENU_BOT), ]
+        [InlineKeyboardButton(trans.get_message(M_SHUTDOWN_NORMAL), callback_data=SHUTDOWN_MENU_NORMAL),
+         InlineKeyboardButton(trans.get_message(M_SHUTDOWN_IMMEDIATE), callback_data=SHUTDOWN_MENU_IMMEDIATE),
+         InlineKeyboardButton(trans.get_message(M_SHUTDOWN_BOT), callback_data=SHUTDOWN_MENU_BOT), ]
     ]
 
     return keyboard
@@ -83,19 +110,23 @@ def shutdown_keyboard():
 
 def status(update, context):
     global telegram_logger
-    cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_GET_CHARACTER_STATUS}
+    trans = get_locale(update)
+    cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_GET_CHARACTER_STATUS, "locale": trans.code}
     enqueue_command(cmd)
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Status requested")
+    msg = trans.get_message(M_REQUESTED_STATUS)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
     telegram_logger.info("Proceed status command from user {0}".format(update.effective_chat.id))
 
 
 def create(update, context):
     global creation_process
     global telegram_logger
-    keyboard = class_keyboard()
+    trans = get_locale(update)
+    msg = trans.get_message(M_CHOOSE_CLASS)
+    keyboard = class_keyboard(trans)
     reply_markup = InlineKeyboardMarkup(keyboard)
     creation_process[update.effective_chat.id] = {"stage": STAGE_SELECT_CLASS}
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Choose your class", reply_markup=reply_markup)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
     telegram_logger.info("Initialized character creation from user {0}".format(update.effective_chat.id))
 
 
@@ -103,15 +134,19 @@ def delete(update, context):
     global deletion_process
     global telegram_logger
     deletion_process[update.effective_chat.id] = {"stage": STAGE_CONFIRM_DELETION}
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Print 'CONFIRM' (all capitals) to continue")
+    trans = get_locale(update)
+    msg = trans.get_message(M_PRINT_CONFIRM)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
     telegram_logger.info("Initialized character deletion from user {0}".format(update.effective_chat.id))
 
 
 def about(update, context):
     global telegram_logger
-    keyboard = main_keyboard(update.effective_chat.id)
+    trans = get_locale(update)
+    msg = trans.get_message(M_ABOUT_TEXT)
+    keyboard = main_keyboard(update.effective_chat.id, trans)
     reply_markup = InlineKeyboardMarkup(keyboard)
-    context.bot.send_message(chat_id=update.effective_chat.id, text=MENU_ABOUT_TEXT, reply_markup=reply_markup)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
     telegram_logger.info("Sent \"About\" to user {0}".format(update.effective_chat.id))
 
 
@@ -119,9 +154,11 @@ def admin(update, context):
     global telegram_logger
     global config
     if update.effective_chat.id in config.admin_list:
-        keyboard = admin_keyboard()
+        trans = get_locale(update)
+        msg = trans.get_message(M_ABOUT_TEXT)
+        keyboard = admin_keyboard(trans)
         reply_markup = InlineKeyboardMarkup(keyboard)
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Admin panel", reply_markup=reply_markup)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
         telegram_logger.info("Sent \"Admin menu\" to user {0}".format(update.effective_chat.id))
     else:
         telegram_logger.error("Illegal access to \"Admin menu\" from user {0}".format(update.effective_chat.id))
@@ -131,9 +168,11 @@ def shutdown(update, context):
     global telegram_logger
     global config
     if update.effective_chat.id in config.admin_list:
-        keyboard = shutdown_keyboard()
+        trans = get_locale(update)
+        msg = trans.get_message(M_SHUTDOWN_PANEL)
+        keyboard = shutdown_keyboard(trans)
         reply_markup = InlineKeyboardMarkup(keyboard)
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Shutdown panel", reply_markup=reply_markup)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
         telegram_logger.info("Sent \"shutdown menu\" to user {0}".format(update.effective_chat.id))
     else:
         telegram_logger.error("Illegal access to \"shutdown menu\" from user {0}".format(update.effective_chat.id))
@@ -143,9 +182,11 @@ def ask_server_stats(update, context):
     global telegram_logger
     global config
     if update.effective_chat.id in config.admin_list:
-        cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_GET_SERVER_STATS}
+        trans = get_locale(update)
+        msg = trans.get_message(M_REQUESTED_SERVER_STATUS)
+        cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_GET_SERVER_STATS, "locale": trans.code}
         enqueue_command(cmd, True)
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Server stats requested",)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
         telegram_logger.info("Sent server stats request from user {0}".format(update.effective_chat.id))
     else:
         telegram_logger.error("Illegal access ti \"ask_server_stats\" from user {0}".format(update.effective_chat.id))
@@ -155,12 +196,15 @@ def send_shutdown_immediate(update, context):
     global telegram_logger
     global config
     if update.effective_chat.id in config.admin_list:
-        cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_SERVER_SHUTDOWN_IMMEDIATE}
+        trans = get_locale(update)
+        msg = trans.get_message(M_SENT_SHUTDOWN_IMMEDIATE)
+        cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_SERVER_SHUTDOWN_IMMEDIATE, "locale": trans.code}
         enqueue_command(cmd, True)
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Sent command on immediate shutdown",)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg,)
         telegram_logger.info("Sent command on immediate shutdown from user {0}".format(update.effective_chat.id))
     else:
-        telegram_logger.error("Illegal access ti \"send_shutdown_immediate\" from user {0}".format(update.effective_chat.id))
+        telegram_logger.error("Illegal access ti \"send_shutdown_immediate\" from user {0}".
+                              format(update.effective_chat.id))
 
 
 def send_shutdown_bot(update, context):
@@ -168,8 +212,10 @@ def send_shutdown_bot(update, context):
     global config
     global is_shutdown
     if update.effective_chat.id in config.admin_list:
+        trans = get_locale(update)
+        msg = trans.get_message(M_SENT_SHUTDOWN_BOT)
         telegram_logger.info("Shutdown requested")
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Ok", )
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg, )
         is_shutdown = True
     else:
         telegram_logger.error("Illegal access ti \"send_shutdown_bot\" from user {0}".format(update.effective_chat.id))
@@ -179,12 +225,15 @@ def send_shutdown_normal(update, context):
     global telegram_logger
     global config
     if update.effective_chat.id in config.admin_list:
-        cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_SERVER_SHUTDOWN_NORMAL}
+        trans = get_locale(update)
+        msg = trans.get_message(M_SENT_SHUTDOWN)
+        cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_SERVER_SHUTDOWN_NORMAL, "locale": trans.code}
         enqueue_command(cmd, True)
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Sent command on shutdown",)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg,)
         telegram_logger.info("Sent command on shutdown from user {0}".format(update.effective_chat.id))
     else:
-        telegram_logger.error("Illegal access ti \"send_shutdown_normal\" from user {0}".format(update.effective_chat.id))
+        telegram_logger.error("Illegal access ti \"send_shutdown_normal\" from user {0}".
+                              format(update.effective_chat.id))
 
 
 def class_menu(update, context):
@@ -198,19 +247,24 @@ def class_menu(update, context):
         char_class = update["callback_query"]["data"][6:]
         creation_process[update.effective_chat.id]["class"] = char_class
         creation_process[update.effective_chat.id]["stage"] = STAGE_CHOOSE_NAME
-        context.bot.send_message(chat_id=update.effective_chat.id, text="You choose {0}, please, enter name".
-                                 format(char_class))
+        trans = get_locale(update)
+        msg = trans.get_message(M_ENTER_NAME)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg.
+                                 format(trans.get_message(char_class)))
         telegram_logger.info("Character creation by user {0} advanced to name input stage".
                              format(update.effective_chat.id))
     else:
         telegram_logger.warning("Character creation by user {0} not advanced to name input stage because of reasons".
                                 format(update.effective_chat.id))
+        create(update, context)
 
 
 def main_menu(update, context):
     global telegram_logger
     global config
     cur_item = update["callback_query"]["data"]
+    telegram_logger.debug("Main menu called. Update {}".format(update))
+    telegram_logger.debug("Main menu called. Context {}".format(context))
     telegram_logger.info("Received command {0} from user {1} in main menu".
                          format(cur_item, update.effective_chat.id))
     if cur_item == MAIN_MENU_CREATE:
@@ -292,6 +346,7 @@ def echo(update, context):
     global deletion_process
     global telegram_logger
     telegram_logger.debug("Echo: update: {0}, context {1}".format(update, context))
+    trans = get_locale(update)
     is_correct = False
     if update.effective_chat.id in creation_process.keys():
         if creation_process[update.effective_chat.id]["stage"] == STAGE_CHOOSE_NAME:
@@ -299,20 +354,24 @@ def echo(update, context):
     if is_correct:
         creation_process[update.effective_chat.id]["stage"] = "confirm"
         creation_process[update.effective_chat.id]["name"] = update["message"]["text"]
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Let me check if name is free...")
+        msg = trans.get_message(M_CHECK_NAME)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
         cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_CREATE_CHARACTER,
                "name": creation_process[update.effective_chat.id].get("name"),
-               "class": creation_process[update.effective_chat.id].get("class")}
+               "class": creation_process[update.effective_chat.id].get("class"),
+               "locale": trans.code}
         enqueue_command(cmd)
     elif update.effective_chat.id in deletion_process.keys():
         if deletion_process[update.effective_chat.id]["stage"] == STAGE_CONFIRM_DELETION:
             if update["message"]["text"] == "CONFIRM":
-                cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_DELETE_CHARACTER}
+                cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_DELETE_CHARACTER, "locale": trans.code}
                 enqueue_command(cmd)
-                context.bot.send_message(chat_id=update.effective_chat.id, text="Try to delete character...")
+                msg = trans.get_message(M_SENT_CHAR_DELETE)
+                context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
             else:
                 del deletion_process[update.effective_chat.id]
-                context.bot.send_message(chat_id=update.effective_chat.id, text="Operation canceled...")
+                msg = trans.get_message(M_CANCEL_REQUEST)
+                context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
                 start(update, context)
 
     else:
@@ -321,7 +380,14 @@ def echo(update, context):
 
 def class_list_callback(ch, method, properties, body):
     global class_list
-    class_list = json.loads(body).get("class_list")
+    global translations
+    buf = json.loads(body).get("class_list")
+    class_list = []
+    for i in buf:
+        class_list.append(i)
+        for j in buf[i]:
+            if j in translations.keys():
+                translations[j].add_message(i, buf[i][j])
 
 
 def dict_response_callback(ch, method, properties, body):
@@ -330,13 +396,14 @@ def dict_response_callback(ch, method, properties, body):
     msg = json.loads(body)
     cmd_type = msg.get("cmd_type")
     chat_id = msg.get("user_id")
+    trans = get_locale(None, chat_id)
     if cmd_type == CMD_SET_CLASS_LIST:
         class_list_callback(ch, method, properties, body)
     elif cmd_type == CMD_SET_SERVER_STATS:
-        reply_markup = InlineKeyboardMarkup(admin_keyboard())
+        reply_markup = InlineKeyboardMarkup(admin_keyboard(trans))
         updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("server_info"), reply_markup=reply_markup)
     elif cmd_type == CMD_SERVER_OK:
-        reply_markup = InlineKeyboardMarkup(admin_keyboard())
+        reply_markup = InlineKeyboardMarkup(admin_keyboard(trans))
         updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg, reply_markup=reply_markup)
     else:
         if chat_id is not None:
@@ -352,7 +419,8 @@ def cmd_response_callback(ch, method, properties, body):
     queue_logger.info("Received command " + str(body) + ", started callback")
     msg = json.loads(body)
     chat_id = msg.get("user_id")
-    reply_markup = InlineKeyboardMarkup(main_keyboard(chat_id))
+    trans = get_locale(None, chat_id)
+    reply_markup = InlineKeyboardMarkup(main_keyboard(chat_id, trans))
     if chat_id is not None:
         if msg.get("cmd_type") == CMD_GET_CHARACTER_STATUS:
             updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("char_info"), reply_markup=reply_markup)
@@ -366,13 +434,13 @@ def cmd_response_callback(ch, method, properties, body):
             del deletion_process[chat_id]
 
 
-def get_mq_connect(config):
-    if config.queue_password is None:
-        return pika.BlockingConnection(pika.ConnectionParameters(host=config.queue_host, port=config.queue_port))
+def get_mq_connect(mq_config):
+    if mq_config.queue_password is None:
+        return pika.BlockingConnection(pika.ConnectionParameters(host=mq_config.queue_host, port=mq_config.queue_port))
     else:
-        return pika.BlockingConnection(pika.ConnectionParameters(host=config.queue_host, port=config.queue_port,
+        return pika.BlockingConnection(pika.ConnectionParameters(host=mq_config.queue_host, port=mq_config.queue_port,
                                                                  credentials=pika.credentials.PlainCredentials(
-                                                                     config.queue_user, config.queue_password)))
+                                                                     mq_config.queue_user, mq_config.queue_password)))
 
 
 def main():
@@ -386,12 +454,17 @@ def main():
     global telegram_logger
     global config
     global is_shutdown
+    global user_locales
+    global translations
 
     is_shutdown = False
     class_list = None
     creation_process = {}
     deletion_process = {}
     characters = {}
+    user_locales = {}
+    translations = {}
+
     parser = argparse.ArgumentParser(description='Idle RPG telegram bot.')
     parser.add_argument("--config", '-cfg', help="Path to config file", action="store", default="cfg//main.json")
     parser.add_argument("--test_users", help="Number of test users of each class created", action="store", default=None)
@@ -405,6 +478,14 @@ def main():
     queue_logger = get_logger(LOG_QUEUE, config.log_level)
     telegram_logger = get_logger(LOG_TELEGRAM, config.log_level)
     # set_basic_logging(config.log_level)
+
+    for dirpath, dirnames, filenames in os.walk("l18n"):
+        for lang_file in filenames:
+            logger.info("Start process localization file {0}".format(lang_file))
+            translations[lang_file[:2]] = L18n()
+            translations[lang_file[:2]].set_locale(lang_file[:-4])
+            logger.info("Finish process localization file {0}".format(filenames))
+
     updater = Updater(token=config.secret, use_context=True)
     dispatcher = updater.dispatcher
 
@@ -452,7 +533,7 @@ def main():
         logger.info("Started create test users")
         for i in range(int(args.test_users)):
             for j in class_list:
-                cmd = {"cmd_type": CMD_CREATE_CHARACTER, "name": j + '_' + str(i + 1), "class": j}
+                cmd = {"cmd_type": CMD_CREATE_CHARACTER, "name": j + '_' + str(i + 1), "class": j, "locale": "en"}
                 cnt_users += 1
                 enqueue_command(cmd)
         test_finish_time = datetime.datetime.now()
@@ -464,30 +545,37 @@ def main():
 
     logger.info("Start listen server responses")
     while True:
-        for method_frame, properties, body in out_channel.consume(QUEUE_NAME_RESPONSES, inactivity_timeout=5,
-                                                                  auto_ack=False):
-            if body is not None:
-                logger.info("Received message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
-                cmd_response_callback(None, method_frame, properties, body)
-                out_channel.basic_ack(method_frame.delivery_tag)
-                logger.info("Received message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
-                            " acknowledged")
-            else:
-                logger.info("No more messages in {}".format(QUEUE_NAME_RESPONSES))
-                out_channel.cancel()
-                break
-        for method_frame, properties, body in out_channel.consume(QUEUE_NAME_DICT, inactivity_timeout=5,
-                                                                  auto_ack=False):
-            if body is not None:
-                logger.info("Received message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
-                cmd_response_callback(None, method_frame, properties, body)
-                out_channel.basic_ack(method_frame.delivery_tag)
-                logger.info("Received message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
-                            " acknowledged")
-            else:
-                logger.info("No more messages in {}".format(QUEUE_NAME_DICT))
-                out_channel.cancel()
-                break
+        try:
+            for method_frame, properties, body in out_channel.consume(QUEUE_NAME_RESPONSES, inactivity_timeout=5,
+                                                                      auto_ack=False):
+                if body is not None:
+                    logger.info("Received user message {0} with delivery_tag {1}".format(body,
+                                                                                         method_frame.delivery_tag))
+                    cmd_response_callback(None, method_frame, properties, body)
+                    out_channel.basic_ack(method_frame.delivery_tag)
+                    logger.info("Received user message " + str(body) + " with delivery_tag " +
+                                str(method_frame.delivery_tag) + " acknowledged")
+                else:
+                    logger.info("No more messages in {}".format(QUEUE_NAME_RESPONSES))
+                    out_channel.cancel()
+                    break
+            for method_frame, properties, body in out_channel.consume(QUEUE_NAME_DICT, inactivity_timeout=5,
+                                                                      auto_ack=False):
+                if body is not None:
+                    logger.info("Received server message {0} with delivery_tag {1}".format(body,
+                                                                                           method_frame.delivery_tag))
+                    dict_response_callback(None, method_frame, properties, body)
+                    out_channel.basic_ack(method_frame.delivery_tag)
+                    logger.info("Received server message " + str(body) + " with delivery_tag " +
+                                str(method_frame.delivery_tag) + " acknowledged")
+                else:
+                    logger.info("No more messages in {}".format(QUEUE_NAME_DICT))
+                    out_channel.cancel()
+                    break
+        except pika.exceptions.AMQPError as exc:
+            logger.critical("Error {0} when consume in queue, reconnect.".format(exc))
+            out_queue = get_mq_connect(config)
+            out_channel = out_queue.channel()
         # should be in QUEUE_NAME_DICT listener, but to make things easier put it here
         if is_shutdown:
             updater.stop()
