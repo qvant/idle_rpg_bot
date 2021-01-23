@@ -62,7 +62,8 @@ def class_keyboard(trans):
     for i in class_list:
         if len(keyboard[len(keyboard) - 1]) > 4:
             keyboard.append([])
-        keyboard[len(keyboard) - 1].append(InlineKeyboardButton(trans.get_message(i), callback_data="class_" + str(i)), )
+        keyboard[len(keyboard) - 1].append(InlineKeyboardButton(trans.get_message(i),
+                                                                callback_data="class_" + str(i)), )
     return keyboard
 
 
@@ -202,7 +203,8 @@ def send_shutdown_immediate(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg,)
         telegram_logger.info("Sent command on immediate shutdown from user {0}".format(update.effective_chat.id))
     else:
-        telegram_logger.error("Illegal access ti \"send_shutdown_immediate\" from user {0}".format(update.effective_chat.id))
+        telegram_logger.error("Illegal access ti \"send_shutdown_immediate\" from user {0}".
+                              format(update.effective_chat.id))
 
 
 def send_shutdown_bot(update, context):
@@ -230,7 +232,8 @@ def send_shutdown_normal(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg,)
         telegram_logger.info("Sent command on shutdown from user {0}".format(update.effective_chat.id))
     else:
-        telegram_logger.error("Illegal access ti \"send_shutdown_normal\" from user {0}".format(update.effective_chat.id))
+        telegram_logger.error("Illegal access ti \"send_shutdown_normal\" from user {0}".
+                              format(update.effective_chat.id))
 
 
 def class_menu(update, context):
@@ -431,13 +434,13 @@ def cmd_response_callback(ch, method, properties, body):
             del deletion_process[chat_id]
 
 
-def get_mq_connect(config):
-    if config.queue_password is None:
-        return pika.BlockingConnection(pika.ConnectionParameters(host=config.queue_host, port=config.queue_port))
+def get_mq_connect(mq_config):
+    if mq_config.queue_password is None:
+        return pika.BlockingConnection(pika.ConnectionParameters(host=mq_config.queue_host, port=mq_config.queue_port))
     else:
-        return pika.BlockingConnection(pika.ConnectionParameters(host=config.queue_host, port=config.queue_port,
+        return pika.BlockingConnection(pika.ConnectionParameters(host=mq_config.queue_host, port=mq_config.queue_port,
                                                                  credentials=pika.credentials.PlainCredentials(
-                                                                     config.queue_user, config.queue_password)))
+                                                                     mq_config.queue_user, mq_config.queue_password)))
 
 
 def main():
@@ -546,11 +549,12 @@ def main():
             for method_frame, properties, body in out_channel.consume(QUEUE_NAME_RESPONSES, inactivity_timeout=5,
                                                                       auto_ack=False):
                 if body is not None:
-                    logger.info("Received user message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
+                    logger.info("Received user message {0} with delivery_tag {1}".format(body,
+                                                                                         method_frame.delivery_tag))
                     cmd_response_callback(None, method_frame, properties, body)
                     out_channel.basic_ack(method_frame.delivery_tag)
-                    logger.info("Received user message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
-                                " acknowledged")
+                    logger.info("Received user message " + str(body) + " with delivery_tag " +
+                                str(method_frame.delivery_tag) + " acknowledged")
                 else:
                     logger.info("No more messages in {}".format(QUEUE_NAME_RESPONSES))
                     out_channel.cancel()
@@ -558,11 +562,12 @@ def main():
             for method_frame, properties, body in out_channel.consume(QUEUE_NAME_DICT, inactivity_timeout=5,
                                                                       auto_ack=False):
                 if body is not None:
-                    logger.info("Received server message {0} with delivery_tag {1}".format(body, method_frame.delivery_tag))
+                    logger.info("Received server message {0} with delivery_tag {1}".format(body,
+                                                                                           method_frame.delivery_tag))
                     dict_response_callback(None, method_frame, properties, body)
                     out_channel.basic_ack(method_frame.delivery_tag)
-                    logger.info("Received server message " + str(body) + " with delivery_tag " + str(method_frame.delivery_tag) +
-                                " acknowledged")
+                    logger.info("Received server message " + str(body) + " with delivery_tag " +
+                                str(method_frame.delivery_tag) + " acknowledged")
                 else:
                     logger.info("No more messages in {}".format(QUEUE_NAME_DICT))
                     out_channel.cancel()
