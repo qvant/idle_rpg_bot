@@ -189,7 +189,7 @@ def ask_server_stats(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
         telegram_logger.info("Sent server stats request from user {0}".format(update.effective_chat.id))
     else:
-        telegram_logger.error("Illegal access ti \"ask_server_stats\" from user {0}".format(update.effective_chat.id))
+        telegram_logger.error("Illegal access to \"ask_server_stats\" from user {0}".format(update.effective_chat.id))
 
 
 def send_shutdown_immediate(update, context):
@@ -203,7 +203,7 @@ def send_shutdown_immediate(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg,)
         telegram_logger.info("Sent command on immediate shutdown from user {0}".format(update.effective_chat.id))
     else:
-        telegram_logger.error("Illegal access ti \"send_shutdown_immediate\" from user {0}".
+        telegram_logger.error("Illegal access to \"send_shutdown_immediate\" from user {0}".
                               format(update.effective_chat.id))
 
 
@@ -218,7 +218,7 @@ def send_shutdown_bot(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg, )
         is_shutdown = True
     else:
-        telegram_logger.error("Illegal access ti \"send_shutdown_bot\" from user {0}".format(update.effective_chat.id))
+        telegram_logger.error("Illegal access to \"send_shutdown_bot\" from user {0}".format(update.effective_chat.id))
 
 
 def send_shutdown_normal(update, context):
@@ -232,7 +232,7 @@ def send_shutdown_normal(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg,)
         telegram_logger.info("Sent command on shutdown from user {0}".format(update.effective_chat.id))
     else:
-        telegram_logger.error("Illegal access ti \"send_shutdown_normal\" from user {0}".
+        telegram_logger.error("Illegal access to \"send_shutdown_normal\" from user {0}".
                               format(update.effective_chat.id))
 
 
@@ -326,6 +326,7 @@ def enqueue_command(obj, system=False):
         queue_name = QUEUE_NAME_INIT
     else:
         queue_name = QUEUE_NAME_CMD
+    obj["sent_by_admin"] = obj.get("user_id") in config.admin_list
     msg_body = json.dumps(obj)
     try:
         queue = get_mq_connect(config)
