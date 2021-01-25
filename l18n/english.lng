@@ -23,5 +23,6 @@
   "SHUTDOWN_NORMAL": "Shutdown normal",
   "SHUTDOWN_IMMEDIATE": "Shutdown immediate",
   "SHUTDOWN_BOT": "Shutdown bot",
-  "SHUTDOWN_PANEL": "Shutdown menu"
+  "SHUTDOWN_PANEL": "Shutdown menu",
+  "BOT_STATS": "Bot stats"
 }

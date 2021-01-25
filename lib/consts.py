@@ -36,6 +36,7 @@ MAIN_MENU_ADMIN = "main_admin"
 
 
 ADMIN_MENU_STATS = "admin_stats"
+ADMIN_MENU_BOT_STATS = "admin_bot_stats"
 ADMIN_MENU_SHUTDOWN_BASIC = "admin_shutdown_basic"
 SHUTDOWN_MENU_NORMAL = "shutdown_normal"
 SHUTDOWN_MENU_IMMEDIATE = "shutdown_immediate"

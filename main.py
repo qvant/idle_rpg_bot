@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import json
+import psutil
 import os
 import sys
 import time
@@ -27,6 +28,7 @@ global config
 global is_shutdown
 global user_locales
 global translations
+global startup_time
 
 
 def get_locale(update, chat_id=None):
@@ -91,6 +93,7 @@ def main_keyboard(chat_id, trans):
 def admin_keyboard(trans):
     keyboard = [
         [InlineKeyboardButton(trans.get_message(M_SERVER_STATS), callback_data=ADMIN_MENU_STATS),
+         InlineKeyboardButton(trans.get_message(M_BOT_STATS), callback_data=ADMIN_MENU_BOT_STATS),
          InlineKeyboardButton(trans.get_message(M_SHUTDOWN_LABEL), callback_data=ADMIN_MENU_SHUTDOWN_BASIC),
          ]
     ]
@@ -190,6 +193,32 @@ def ask_server_stats(update, context):
         telegram_logger.info("Sent server stats request from user {0}".format(update.effective_chat.id))
     else:
         telegram_logger.error("Illegal access to \"ask_server_stats\" from user {0}".format(update.effective_chat.id))
+
+
+def show_bot_stats(update, context):
+    global telegram_logger
+    global config
+    global startup_time
+    if update.effective_chat.id in config.admin_list:
+        process = psutil.Process(os.getpid())
+        memory_used = round(process.memory_full_info().rss / 1024 ** 2, 2)
+        memory_percent = round(process.memory_percent("rss"), 2)
+        cpu_times = process.cpu_times()
+        cpu_percent = process.cpu_percent()
+        msg = "Bot started at {0} (uptime {1} second).".format(startup_time, datetime.datetime.now() - startup_time)
+        msg += chr(10)
+        msg += "Used memory: {0} mb, {1} % from total".format(memory_used, memory_percent)
+        msg += chr(10)
+        msg += "CPU times: {0}".format(cpu_times)
+        msg += chr(10)
+        msg += "CPU percent {0}".format(cpu_percent)
+        msg += chr(10)
+        trans = get_locale(update)
+        reply_markup = InlineKeyboardMarkup(admin_keyboard(trans))
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
+        telegram_logger.info("Sent server stats request from user {0}".format(update.effective_chat.id))
+    else:
+        telegram_logger.error("Illegal access to \"show_bot_stats\" from user {0}".format(update.effective_chat.id))
 
 
 def send_shutdown_immediate(update, context):
@@ -294,6 +323,8 @@ def admin_menu(update, context):
                          format(cur_item, update.effective_chat.id))
     if cur_item == ADMIN_MENU_STATS:
         ask_server_stats(update, context)
+    elif cur_item == ADMIN_MENU_BOT_STATS:
+        show_bot_stats(update, context)
     elif cur_item == ADMIN_MENU_SHUTDOWN_BASIC:
         shutdown(update, context)
     else:
@@ -457,6 +488,7 @@ def main():
     global is_shutdown
     global user_locales
     global translations
+    global startup_time
 
     is_shutdown = False
     class_list = None
@@ -465,6 +497,7 @@ def main():
     characters = {}
     user_locales = {}
     translations = {}
+    startup_time = datetime.datetime.now()
 
     parser = argparse.ArgumentParser(description='Idle RPG telegram bot.')
     parser.add_argument("--config", '-cfg', help="Path to config file", action="store", default="cfg//main.json")

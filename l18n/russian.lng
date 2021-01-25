@@ -23,5 +23,6 @@
   "SHUTDOWN_NORMAL": "Остановить",
   "SHUTDOWN_IMMEDIATE": "Остановить немедленно",
   "SHUTDOWN_BOT": "Остановить бота",
-  "SHUTDOWN_PANEL": "Меню отключения"
+  "SHUTDOWN_PANEL": "Меню отключения",
+  "BOT_STATS": "Состояние бота"
 }
