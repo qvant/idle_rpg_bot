@@ -21,6 +21,8 @@ CMD_GET_SERVER_STATS = "get_server_stats"
 CMD_SET_SERVER_STATS = "server_stats"
 CMD_SERVER_OK = "server_ok"
 
+CHARACTER_NAME_MAX_LENGTH = 255
+
 QUEUE_NAME_INIT = "InitQueue"
 QUEUE_NAME_DICT = "DictionaryQueue"
 QUEUE_NAME_CMD = "CommandQueue"

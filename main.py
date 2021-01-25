@@ -382,7 +382,11 @@ def echo(update, context):
     is_correct = False
     if update.effective_chat.id in creation_process.keys():
         if creation_process[update.effective_chat.id]["stage"] == STAGE_CHOOSE_NAME:
-            is_correct = True
+            if CHARACTER_NAME_MAX_LENGTH < len(update["message"]["text"]):
+                msg = trans.get_message(M_NAME_TOO_LONG).format(CHARACTER_NAME_MAX_LENGTH)
+                context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+            else:
+                is_correct = True
     if is_correct:
         creation_process[update.effective_chat.id]["stage"] = "confirm"
         creation_process[update.effective_chat.id]["name"] = update["message"]["text"]
