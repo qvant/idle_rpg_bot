@@ -59,56 +59,57 @@ def start(update, context):
     telegram_logger.info("Proceed start command from user {0}".format(update.effective_chat.id))
 
 
+def pretty_menu(menu):
+    res = [[]]
+    cur_menu_len = 0
+    for i in menu:
+        if len(i.text) + cur_menu_len >= MAX_MENU_LENGTH:
+            res.append([])
+            cur_menu_len = 0
+        res[len(res) - 1].append(i)
+        cur_menu_len += len(i.text)
+    return res
+
+
 def class_keyboard(trans):
-    keyboard = [[]]
+    keyboard = []
     for i in class_list:
-        if len(keyboard[len(keyboard) - 1]) > 4:
-            keyboard.append([])
-        keyboard[len(keyboard) - 1].append(InlineKeyboardButton(trans.get_message(i),
-                                                                callback_data="class_" + str(i)), )
-    return keyboard
+        keyboard.append(InlineKeyboardButton(trans.get_message(i), callback_data="class_" + str(i)))
+    return pretty_menu(keyboard)
 
 
 def main_keyboard(chat_id, trans):
     global config
     keyboard = [
-        [InlineKeyboardButton(trans.get_message(M_NEW_CHARACTER), callback_data=MAIN_MENU_CREATE),
-         InlineKeyboardButton(trans.get_message(M_ABOUT_LABEL), callback_data=MAIN_MENU_ABOUT),
-         InlineKeyboardButton(trans.get_message(M_DELETE_CHARACTER), callback_data=MAIN_MENU_DELETE),
-         ],
-        [
-            InlineKeyboardButton(trans.get_message(M_GET_CHARACTER), callback_data=MAIN_MENU_STATUS),
-        ],
+        InlineKeyboardButton(trans.get_message(M_NEW_CHARACTER), callback_data=MAIN_MENU_CREATE),
+        InlineKeyboardButton(trans.get_message(M_ABOUT_LABEL), callback_data=MAIN_MENU_ABOUT),
+        InlineKeyboardButton(trans.get_message(M_DELETE_CHARACTER), callback_data=MAIN_MENU_DELETE),
+        InlineKeyboardButton(trans.get_message(M_GET_CHARACTER), callback_data=MAIN_MENU_STATUS),
     ]
     if chat_id in config.admin_list:
-        keyboard.append(
-            [
-                InlineKeyboardButton(trans.get_message(M_ADMIN_LABEL), callback_data=MAIN_MENU_ADMIN),
-            ]
-        )
+        keyboard.append(InlineKeyboardButton(trans.get_message(M_ADMIN_LABEL), callback_data=MAIN_MENU_ADMIN))
 
-    return keyboard
+    return pretty_menu(keyboard)
 
 
 def admin_keyboard(trans):
     keyboard = [
-        [InlineKeyboardButton(trans.get_message(M_SERVER_STATS), callback_data=ADMIN_MENU_STATS),
-         InlineKeyboardButton(trans.get_message(M_BOT_STATS), callback_data=ADMIN_MENU_BOT_STATS),
-         InlineKeyboardButton(trans.get_message(M_SHUTDOWN_LABEL), callback_data=ADMIN_MENU_SHUTDOWN_BASIC),
-         ]
+        InlineKeyboardButton(trans.get_message(M_SERVER_STATS), callback_data=ADMIN_MENU_STATS),
+        InlineKeyboardButton(trans.get_message(M_BOT_STATS), callback_data=ADMIN_MENU_BOT_STATS),
+        InlineKeyboardButton(trans.get_message(M_SHUTDOWN_LABEL), callback_data=ADMIN_MENU_SHUTDOWN_BASIC),
     ]
 
-    return keyboard
+    return pretty_menu(keyboard)
 
 
 def shutdown_keyboard(trans):
     keyboard = [
-        [InlineKeyboardButton(trans.get_message(M_SHUTDOWN_NORMAL), callback_data=SHUTDOWN_MENU_NORMAL),
+         InlineKeyboardButton(trans.get_message(M_SHUTDOWN_NORMAL), callback_data=SHUTDOWN_MENU_NORMAL),
          InlineKeyboardButton(trans.get_message(M_SHUTDOWN_IMMEDIATE), callback_data=SHUTDOWN_MENU_IMMEDIATE),
-         InlineKeyboardButton(trans.get_message(M_SHUTDOWN_BOT), callback_data=SHUTDOWN_MENU_BOT), ]
+         InlineKeyboardButton(trans.get_message(M_SHUTDOWN_BOT), callback_data=SHUTDOWN_MENU_BOT
     ]
 
-    return keyboard
+    return pretty_menu(keyboard)
 
 
 def status(update, context):

@@ -59,3 +59,5 @@ LOG_CONFIG = "Config"
 LOG_MAIN = "Main"
 LOG_QUEUE = "Queue"
 LOG_TELEGRAM = "Telegram"
+
+MAX_MENU_LENGTH = 25
