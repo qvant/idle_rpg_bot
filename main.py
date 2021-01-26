@@ -5,6 +5,7 @@ import psutil
 import os
 import sys
 import time
+import pickledb
 
 import pika
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -29,6 +30,7 @@ global is_shutdown
 global user_locales
 global translations
 global startup_time
+global user_settings
 
 
 def get_locale(update, chat_id=None):
@@ -85,6 +87,7 @@ def main_keyboard(chat_id, trans):
         InlineKeyboardButton(trans.get_message(M_ABOUT_LABEL), callback_data=MAIN_MENU_ABOUT),
         InlineKeyboardButton(trans.get_message(M_DELETE_CHARACTER), callback_data=MAIN_MENU_DELETE),
         InlineKeyboardButton(trans.get_message(M_GET_CHARACTER), callback_data=MAIN_MENU_STATUS),
+        InlineKeyboardButton(trans.get_message(M_SETTINGS), callback_data=MAIN_MENU_SETTINGS),
     ]
     if chat_id in config.admin_list:
         keyboard.append(InlineKeyboardButton(trans.get_message(M_ADMIN_LABEL), callback_data=MAIN_MENU_ADMIN))
@@ -106,8 +109,17 @@ def shutdown_keyboard(trans):
     keyboard = [
          InlineKeyboardButton(trans.get_message(M_SHUTDOWN_NORMAL), callback_data=SHUTDOWN_MENU_NORMAL),
          InlineKeyboardButton(trans.get_message(M_SHUTDOWN_IMMEDIATE), callback_data=SHUTDOWN_MENU_IMMEDIATE),
-         InlineKeyboardButton(trans.get_message(M_SHUTDOWN_BOT), callback_data=SHUTDOWN_MENU_BOT
+         InlineKeyboardButton(trans.get_message(M_SHUTDOWN_BOT), callback_data=SHUTDOWN_MENU_BOT)
     ]
+
+    return pretty_menu(keyboard)
+
+
+def locale_keyboard():
+    global translations
+    keyboard = []
+    for i in translations:
+        keyboard.append(InlineKeyboardButton(i, callback_data="LOCALE_" + i))
 
     return pretty_menu(keyboard)
 
@@ -142,6 +154,41 @@ def delete(update, context):
     msg = trans.get_message(M_PRINT_CONFIRM)
     context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
     telegram_logger.info("Initialized character deletion from user {0}".format(update.effective_chat.id))
+
+
+def settings(update, context):
+    global telegram_logger
+    global translations
+    trans = get_locale(update)
+    msg = trans.get_message(M_CHOOSE_LANGUAGE)
+    keyboard = locale_keyboard()
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
+    telegram_logger.info("Sent language settings menu to user {0}".format(update.effective_chat.id))
+
+
+def set_locale(update, context):
+    global telegram_logger
+    global translations
+    global user_locales
+    global user_settings
+    language = update["callback_query"]["data"][7:]
+    if language in translations.keys():
+        user_locales[update.effective_chat.id] = language
+        user_settings.set(str(update.effective_chat.id), language)
+        trans = get_locale(update)
+        msg = trans.get_message(M_LANGUAGE_CHOSEN).format(language)
+        keyboard = main_keyboard(update.effective_chat.id, trans)
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
+        telegram_logger.info("Set locale {1} for user {0}".format(update.effective_chat.id, language))
+    else:
+        trans = get_locale(update)
+        msg = trans.get_message(M_INCORRECT_LANGUAGE).format(language)
+        keyboard = main_keyboard(update.effective_chat.id, trans)
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
+        telegram_logger.error("Can't set not existent locale {1} for user {0}".format(update.effective_chat.id, language))
 
 
 def about(update, context):
@@ -305,6 +352,8 @@ def main_menu(update, context):
         delete(update, context)
     elif cur_item == MAIN_MENU_ABOUT:
         about(update, context)
+    elif cur_item == MAIN_MENU_SETTINGS:
+        settings(update, context)
     elif cur_item == MAIN_MENU_ADMIN:
         if update.effective_chat.id in config.admin_list:
             admin(update, context)
@@ -494,6 +543,7 @@ def main():
     global user_locales
     global translations
     global startup_time
+    global user_settings
 
     is_shutdown = False
     class_list = None
@@ -508,6 +558,7 @@ def main():
     parser.add_argument("--config", '-cfg', help="Path to config file", action="store", default="cfg//main.json")
     parser.add_argument("--test_users", help="Number of test users of each class created", action="store", default=None)
     parser.add_argument("--delay", help="Number of test users of each class created", action="store", default=None)
+    parser.add_argument("--db", help="Path to the user settings storage", action="store", default="user_settings.db")
     args = parser.parse_args()
     if args.delay is not None:
         time.sleep(int(args.delay))
@@ -517,6 +568,16 @@ def main():
     queue_logger = get_logger(LOG_QUEUE, config.log_level)
     telegram_logger = get_logger(LOG_TELEGRAM, config.log_level)
     # set_basic_logging(config.log_level)
+
+    user_settings = pickledb.load(args.db, True)
+    users = user_settings.getall()
+    cnt = 0
+    for i in users:
+        user_locales[int(i)] = user_settings.get(i)
+        cnt += 1
+        if cnt % PERSIST_LOAD_BATCH == 0:
+            logger.info("Was loaded {0} user locales".format(cnt))
+    logger.info("Was loaded {0} user locale settings".format(cnt))
 
     for dirpath, dirnames, filenames in os.walk("l18n"):
         for lang_file in filenames:
@@ -534,6 +595,7 @@ def main():
     main_menu_handler = CallbackQueryHandler(main_menu, pattern="main_")
     admin_menu_handler = CallbackQueryHandler(admin_menu, pattern="admin_")
     shutdown_menu_handler = CallbackQueryHandler(shutdown_menu, pattern="shutdown_")
+    locale_menu_handler = CallbackQueryHandler(set_locale, pattern="LOCALE_")
     echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(create_handler)
@@ -542,6 +604,7 @@ def main():
     dispatcher.add_handler(class_menu_handler)
     dispatcher.add_handler(admin_menu_handler)
     dispatcher.add_handler(shutdown_menu_handler)
+    dispatcher.add_handler(locale_menu_handler)
 
     out_queue = get_mq_connect(config)
     out_channel = out_queue.channel()

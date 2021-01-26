@@ -25,5 +25,9 @@
   "SHUTDOWN_BOT": "Shutdown bot",
   "SHUTDOWN_PANEL": "Shutdown menu",
   "BOT_STATS": "Bot stats",
-  "NAME_TOO_LONG": "Name too long (maximum length is {0} characters)"
+  "NAME_TOO_LONG": "Name too long (maximum length is {0} characters)",
+  "SETTINGS": "Settings",
+  "CHOOSE_LANGUAGE": "Choose language",
+  "LANGUAGE_CHOSEN": "Set locale {0}",
+  "INCORRECT_LANGUAGE": "System error, Locale {0} not exists"
 }

@@ -32,6 +32,7 @@ QUEUE_APP_ID = "Telegram bot"  # second after main app
 
 MAIN_MENU_CREATE = "main_create"
 MAIN_MENU_STATUS = "main_status"
+MAIN_MENU_SETTINGS = "main_setting"
 MAIN_MENU_DELETE = "main_delete"
 MAIN_MENU_ABOUT = "main_about"
 MAIN_MENU_ADMIN = "main_admin"
@@ -61,3 +62,5 @@ LOG_QUEUE = "Queue"
 LOG_TELEGRAM = "Telegram"
 
 MAX_MENU_LENGTH = 25
+
+PERSIST_LOAD_BATCH = 100
