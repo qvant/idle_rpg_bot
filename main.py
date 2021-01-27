@@ -128,9 +128,9 @@ def status(update, context):
     global telegram_logger
     trans = get_locale(update)
     cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_GET_CHARACTER_STATUS, "locale": trans.code}
-    enqueue_command(cmd)
     msg = trans.get_message(M_REQUESTED_STATUS)
     context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+    enqueue_command(cmd)
     telegram_logger.info("Proceed status command from user {0}".format(update.effective_chat.id))
 
 
@@ -236,8 +236,8 @@ def ask_server_stats(update, context):
         trans = get_locale(update)
         msg = trans.get_message(M_REQUESTED_SERVER_STATUS)
         cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_GET_SERVER_STATS, "locale": trans.code}
-        enqueue_command(cmd, True)
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+        enqueue_command(cmd, True)
         telegram_logger.info("Sent server stats request from user {0}".format(update.effective_chat.id))
     else:
         telegram_logger.error("Illegal access to \"ask_server_stats\" from user {0}".format(update.effective_chat.id))
@@ -276,8 +276,8 @@ def send_shutdown_immediate(update, context):
         trans = get_locale(update)
         msg = trans.get_message(M_SENT_SHUTDOWN_IMMEDIATE)
         cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_SERVER_SHUTDOWN_IMMEDIATE, "locale": trans.code}
-        enqueue_command(cmd, True)
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg,)
+        enqueue_command(cmd, True)
         telegram_logger.info("Sent command on immediate shutdown from user {0}".format(update.effective_chat.id))
     else:
         telegram_logger.error("Illegal access to \"send_shutdown_immediate\" from user {0}".
@@ -305,8 +305,8 @@ def send_shutdown_normal(update, context):
         trans = get_locale(update)
         msg = trans.get_message(M_SENT_SHUTDOWN)
         cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_SERVER_SHUTDOWN_NORMAL, "locale": trans.code}
-        enqueue_command(cmd, True)
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg,)
+        enqueue_command(cmd, True)
         telegram_logger.info("Sent command on shutdown from user {0}".format(update.effective_chat.id))
     else:
         telegram_logger.error("Illegal access to \"send_shutdown_normal\" from user {0}".
@@ -451,9 +451,9 @@ def echo(update, context):
         if deletion_process[update.effective_chat.id]["stage"] == STAGE_CONFIRM_DELETION:
             if update["message"]["text"] == "CONFIRM":
                 cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_DELETE_CHARACTER, "locale": trans.code}
-                enqueue_command(cmd)
                 msg = trans.get_message(M_SENT_CHAR_DELETE)
                 context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+                enqueue_command(cmd)
             else:
                 del deletion_process[update.effective_chat.id]
                 msg = trans.get_message(M_CANCEL_REQUEST)
