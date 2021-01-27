@@ -658,7 +658,7 @@ def main():
                     logger.info("Received user message " + str(body) + " with delivery_tag " +
                                 str(method_frame.delivery_tag) + " acknowledged")
                 else:
-                    logger.info("No more messages in {}".format(QUEUE_NAME_RESPONSES))
+                    logger.info("No more messages in {0}".format(QUEUE_NAME_RESPONSES))
                     out_channel.cancel()
                     break
             for method_frame, properties, body in out_channel.consume(QUEUE_NAME_DICT, inactivity_timeout=5,
@@ -671,7 +671,7 @@ def main():
                     logger.info("Received server message " + str(body) + " with delivery_tag " +
                                 str(method_frame.delivery_tag) + " acknowledged")
                 else:
-                    logger.info("No more messages in {}".format(QUEUE_NAME_DICT))
+                    logger.info("No more messages in {0}".format(QUEUE_NAME_DICT))
                     out_channel.cancel()
                     break
         except pika.exceptions.AMQPError as exc:
