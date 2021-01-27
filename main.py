@@ -254,7 +254,9 @@ def show_bot_stats(update, context):
         memory_percent = round(process.memory_percent("rss"), 2)
         cpu_times = process.cpu_times()
         cpu_percent = process.cpu_percent()
-        msg = "Bot started at {0} (uptime {1} second).".format(startup_time, datetime.datetime.now() - startup_time)
+        msg = "Bot started at {0} (uptime {1} second).".format(startup_time,
+                                                               datetime.datetime.now().replace(microsecond=0)
+                                                               - startup_time)
         msg += chr(10)
         msg += "Used memory: {0} mb, {1} % from total".format(memory_used, memory_percent)
         msg += chr(10)
@@ -553,7 +555,7 @@ def main():
     characters = {}
     user_locales = {}
     translations = {}
-    startup_time = datetime.datetime.now()
+    startup_time = datetime.datetime.now().replace(microsecond=0)
 
     parser = argparse.ArgumentParser(description='Idle RPG telegram bot.')
     parser.add_argument("--config", '-cfg', help="Path to config file", action="store", default="cfg//main.json")
