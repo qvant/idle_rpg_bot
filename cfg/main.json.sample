@@ -8,5 +8,10 @@
   "QUEUE_PORT": 5672,
   "ADMIN_ACCOUNTS": [],
   "BOT_SECRET": "",
-  "BOT_SERVER_NAME": ""
+  "BOT_SERVER_NAME": "",
+  "DB_HOST": "localhost",
+  "DB_NAME": "idle_rpg_base",
+  "DB_PASSWORD": "db",
+  "DB_PORT": 5432,
+  "DB_USER": "idle_rpg_bot",
 }

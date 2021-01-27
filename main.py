@@ -5,7 +5,7 @@ import psutil
 import os
 import sys
 import time
-import pickledb
+
 
 import pika
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -15,6 +15,7 @@ from lib.config import Config
 from lib.consts import *
 from lib.l18n import L18n
 from lib.messages import *
+from lib.persist import Persist
 from lib.utility import get_logger
 
 global class_list
@@ -175,7 +176,7 @@ def set_locale(update, context):
     language = update["callback_query"]["data"][7:]
     if language in translations.keys():
         user_locales[update.effective_chat.id] = language
-        user_settings.set(str(update.effective_chat.id), language)
+        user_settings.set(update.effective_chat.id, language)
         trans = get_locale(update)
         msg = trans.get_message(M_LANGUAGE_CHOSEN).format(language)
         keyboard = main_keyboard(update.effective_chat.id, trans)
@@ -569,15 +570,8 @@ def main():
     telegram_logger = get_logger(LOG_TELEGRAM, config.log_level)
     # set_basic_logging(config.log_level)
 
-    user_settings = pickledb.load(args.db, True)
-    users = user_settings.getall()
-    cnt = 0
-    for i in users:
-        user_locales[int(i)] = user_settings.get(i)
-        cnt += 1
-        if cnt % PERSIST_LOAD_BATCH == 0:
-            logger.info("Was loaded {0} user locales".format(cnt))
-    logger.info("Was loaded {0} user locale settings".format(cnt))
+    user_settings = Persist(config)
+    user_locales = user_settings.get_all()
 
     for dirpath, dirnames, filenames in os.walk("l18n"):
         for lang_file in filenames:
