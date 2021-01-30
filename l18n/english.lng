@@ -29,5 +29,12 @@
   "SETTINGS": "Settings",
   "CHOOSE_LANGUAGE": "Choose language",
   "LANGUAGE_CHOSEN": "Set locale {0}",
-  "INCORRECT_LANGUAGE": "System error, Locale {0} not exists"
+  "INCORRECT_LANGUAGE": "System error, Locale {0} not exists",
+  "FEEDBACK": "Write to admins",
+  "FEEDBACK_PROMPT": "The next message will be sent to server admins. Only simple text is accepted (no stickers and pictures, please). They'll be able to see your telegram id and nickname as well",
+  "FEEDBACK_SENT": "Message sent",
+  "FEEDBACK_TOO_LONG": "Message too long, maximum length {0}",
+  "GET_FEEDBACK": "Get feedback message",
+  "FEEDBACK_REQUESTED": "Feedback requested",
+  "FEEDBACK_DONE": "mark as read"
 }

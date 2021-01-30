@@ -22,6 +22,8 @@ global class_list
 global out_channel
 global creation_process
 global deletion_process
+global feedback_process
+global feedback_reading
 global characters
 global updater
 global queue_logger
@@ -89,6 +91,7 @@ def main_keyboard(chat_id, trans):
         InlineKeyboardButton(trans.get_message(M_DELETE_CHARACTER), callback_data=MAIN_MENU_DELETE),
         InlineKeyboardButton(trans.get_message(M_GET_CHARACTER), callback_data=MAIN_MENU_STATUS),
         InlineKeyboardButton(trans.get_message(M_SETTINGS), callback_data=MAIN_MENU_SETTINGS),
+        InlineKeyboardButton(trans.get_message(M_FEEDBACK), callback_data=MAIN_MENU_FEEDBACK),
     ]
     if chat_id in config.admin_list:
         keyboard.append(InlineKeyboardButton(trans.get_message(M_ADMIN_LABEL), callback_data=MAIN_MENU_ADMIN))
@@ -101,6 +104,15 @@ def admin_keyboard(trans):
         InlineKeyboardButton(trans.get_message(M_SERVER_STATS), callback_data=ADMIN_MENU_STATS),
         InlineKeyboardButton(trans.get_message(M_BOT_STATS), callback_data=ADMIN_MENU_BOT_STATS),
         InlineKeyboardButton(trans.get_message(M_SHUTDOWN_LABEL), callback_data=ADMIN_MENU_SHUTDOWN_BASIC),
+        InlineKeyboardButton(trans.get_message(M_GET_FEEDBACK), callback_data=ADMIN_MENU_GET_FEEDBACK),
+    ]
+
+    return pretty_menu(keyboard)
+
+
+def read_keyboard(trans):
+    keyboard = [
+        InlineKeyboardButton(trans.get_message(M_FEEDBACK_DONE), callback_data=READ_MENU_DONE)
     ]
 
     return pretty_menu(keyboard)
@@ -168,6 +180,17 @@ def settings(update, context):
     telegram_logger.info("Sent language settings menu to user {0}".format(update.effective_chat.id))
 
 
+def feedback(update, context):
+    global telegram_logger
+    global translations
+    global feedback_process
+    trans = get_locale(update)
+    msg = trans.get_message(M_FEEDBACK_PROMPT)
+    feedback_process[update.effective_chat.id] = 1
+    context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+    telegram_logger.info("Sent feedback prompt to user {0}".format(update.effective_chat.id))
+
+
 def set_locale(update, context):
     global telegram_logger
     global translations
@@ -228,6 +251,22 @@ def shutdown(update, context):
         telegram_logger.info("Sent \"shutdown menu\" to user {0}".format(update.effective_chat.id))
     else:
         telegram_logger.error("Illegal access to \"shutdown menu\" from user {0}".format(update.effective_chat.id))
+
+
+def get_feedback(update, context):
+    global telegram_logger
+    global config
+    if update.effective_chat.id in config.admin_list:
+        trans = get_locale(update)
+        msg = trans.get_message(M_GET_FEEDBACK)
+        cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_GET_FEEDBACK, "locale": trans.code}
+        enqueue_command(cmd, True)
+        keyboard = admin_keyboard(trans)
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
+        telegram_logger.info("Sent get_feedback from user {0}".format(update.effective_chat.id))
+    else:
+        telegram_logger.error("Illegal access to \"feedback menu\" from user {0}".format(update.effective_chat.id))
 
 
 def ask_server_stats(update, context):
@@ -339,6 +378,28 @@ def class_menu(update, context):
         create(update, context)
 
 
+def read_done(update, context):
+    global feedback_reading
+    global telegram_logger
+    is_correct = False
+    if update.effective_chat.id in feedback_reading.keys():
+        is_correct = True
+    if is_correct:
+        trans = get_locale(update)
+        msg = trans.get_message(M_FEEDBACK_SENT)
+        cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_CONFIRM_FEEDBACK, "locale": trans.code,
+               "message_id": feedback_reading[update.effective_chat.id]}
+        enqueue_command(cmd, True)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+        telegram_logger.info("Reading message id {0} done by user {1} send".
+                             format(feedback_reading[update.effective_chat.id], update.effective_chat.id))
+        del feedback_reading[update.effective_chat.id]
+    else:
+        telegram_logger.warning("Reading done failed".
+                                format(update.effective_chat.id))
+        start(update, context)
+
+
 def main_menu(update, context):
     global telegram_logger
     global config
@@ -357,6 +418,8 @@ def main_menu(update, context):
         about(update, context)
     elif cur_item == MAIN_MENU_SETTINGS:
         settings(update, context)
+    elif cur_item == MAIN_MENU_FEEDBACK:
+        feedback(update, context)
     elif cur_item == MAIN_MENU_ADMIN:
         if update.effective_chat.id in config.admin_list:
             admin(update, context)
@@ -380,6 +443,8 @@ def admin_menu(update, context):
         show_bot_stats(update, context)
     elif cur_item == ADMIN_MENU_SHUTDOWN_BASIC:
         shutdown(update, context)
+    elif cur_item == ADMIN_MENU_GET_FEEDBACK:
+        get_feedback(update, context)
     else:
         telegram_logger.error("Received unknown command {0} from user {1} in admin menu".
                               format(cur_item, update.effective_chat.id))
@@ -399,6 +464,19 @@ def shutdown_menu(update, context):
         send_shutdown_bot(update, context)
     else:
         telegram_logger.error("Received unknown command {0} from user {1} in shutdown menu".
+                              format(cur_item, update.effective_chat.id))
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command")
+
+
+def read_menu(update, context):
+    global telegram_logger
+    cur_item = update["callback_query"]["data"]
+    telegram_logger.info("Received command {0} from user {1} in read menu".
+                         format(cur_item, update.effective_chat.id))
+    if cur_item == READ_MENU_DONE:
+        read_done(update, context)
+    else:
+        telegram_logger.error("Received unknown command {0} from user {1} in read menu".
                               format(cur_item, update.effective_chat.id))
         context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command")
 
@@ -429,9 +507,10 @@ def enqueue_command(obj, system=False):
 def echo(update, context):
     global creation_process
     global deletion_process
+    global feedback_process
     global telegram_logger
     telegram_logger.debug("Echo: update: {0}, context {1}".format(update, context))
-    trans = get_locale(update)
+    trans = get_locale(update, update.effective_chat.id)
     is_correct = False
     if update.effective_chat.id in creation_process.keys():
         if creation_process[update.effective_chat.id]["stage"] == STAGE_CHOOSE_NAME:
@@ -462,6 +541,18 @@ def echo(update, context):
                 msg = trans.get_message(M_CANCEL_REQUEST)
                 context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
                 start(update, context)
+    elif update.effective_chat.id in feedback_process.keys():
+        if len(update["message"]["text"]) <= MAX_FEEDBACK_LENGTH:
+            del feedback_process[update.effective_chat.id]
+            cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_FEEDBACK, "locale": trans.code,
+                   "message": update["message"]["text"], "user_name": update.effective_chat.username}
+            msg = trans.get_message(M_FEEDBACK_SENT)
+            context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+            enqueue_command(cmd)
+        else:
+            msg = trans.get_message(M_FEEDBACK_TOO_LONG).format(MAX_FEEDBACK_LENGTH)
+            reply_markup = InlineKeyboardMarkup(main_keyboard(None, trans))
+            context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
 
     else:
         telegram_logger.info("User {0} sent message {1}".format(update.effective_chat.id, update.message.text))
@@ -481,6 +572,7 @@ def class_list_callback(ch, method, properties, body):
 
 def dict_response_callback(ch, method, properties, body):
     global queue_logger
+    global feedback_reading
     queue_logger.info("Received server command " + str(body) + ", started callback")
     msg = json.loads(body)
     cmd_type = msg.get("cmd_type")
@@ -494,6 +586,14 @@ def dict_response_callback(ch, method, properties, body):
     elif cmd_type == CMD_SERVER_OK:
         reply_markup = InlineKeyboardMarkup(admin_keyboard(trans))
         updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg, reply_markup=reply_markup)
+    elif cmd_type == CMD_SENT_FEEDBACK:
+        reply_markup = InlineKeyboardMarkup(read_keyboard(trans))
+        feedback_reading[chat_id] = msg.get("message_id")
+        updater.dispatcher.bot.send_message(chat_id=chat_id,
+                                            text="sent by id: {0}, nick: {1} message: {2}, message_id: {3}".
+                                            format(msg.get("user_sent_id"), msg.get("user_sent_nick"),
+                                                   msg.get("message"), msg.get("message_id")),
+                                            reply_markup=reply_markup)
     else:
         if chat_id is not None:
             updater.dispatcher.bot.send_message(chat_id=chat_id, text="Unknown message".format(msg))
@@ -536,6 +636,8 @@ def main():
     global class_list
     global creation_process
     global deletion_process
+    global feedback_process
+    global feedback_reading
     global characters
     global out_channel
     global updater
@@ -552,6 +654,8 @@ def main():
     class_list = None
     creation_process = {}
     deletion_process = {}
+    feedback_process = {}
+    feedback_reading = {}
     characters = {}
     user_locales = {}
     translations = {}
@@ -587,11 +691,13 @@ def main():
 
     start_handler = CommandHandler('start', start)
     create_handler = CommandHandler('create', create)
+    # TODO: make patterns with regexp
     class_menu_handler = CallbackQueryHandler(class_menu, pattern="class_")
     main_menu_handler = CallbackQueryHandler(main_menu, pattern="main_")
     admin_menu_handler = CallbackQueryHandler(admin_menu, pattern="admin_")
     shutdown_menu_handler = CallbackQueryHandler(shutdown_menu, pattern="shutdown_")
     locale_menu_handler = CallbackQueryHandler(set_locale, pattern="LOCALE_")
+    read_menu_handler = CallbackQueryHandler(read_menu, pattern="confirm_")
     echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(create_handler)
@@ -601,6 +707,7 @@ def main():
     dispatcher.add_handler(admin_menu_handler)
     dispatcher.add_handler(shutdown_menu_handler)
     dispatcher.add_handler(locale_menu_handler)
+    dispatcher.add_handler(read_menu_handler)
 
     out_queue = get_mq_connect(config)
     out_channel = out_queue.channel()

@@ -25,6 +25,11 @@ CMD_SERVER_SHUTDOWN_NORMAL = "shutdown_normal"
 CMD_GET_SERVER_STATS = "get_server_stats"
 CMD_SET_SERVER_STATS = "server_stats"
 CMD_SERVER_OK = "server_ok"
+CMD_FEEDBACK = "feedback"
+CMD_FEEDBACK_RECEIVE = "feedback_receive"
+CMD_GET_FEEDBACK = "get_feedback"
+CMD_SENT_FEEDBACK = "sent_feedback"
+CMD_CONFIRM_FEEDBACK = "confirm_feedback"
 
 CHARACTER_NAME_MAX_LENGTH = 255
 
@@ -38,6 +43,7 @@ QUEUE_APP_ID = "Telegram bot"  # second after main app
 MAIN_MENU_CREATE = "main_create"
 MAIN_MENU_STATUS = "main_status"
 MAIN_MENU_SETTINGS = "main_setting"
+MAIN_MENU_FEEDBACK = "main_feedback"
 MAIN_MENU_DELETE = "main_delete"
 MAIN_MENU_ABOUT = "main_about"
 MAIN_MENU_ADMIN = "main_admin"
@@ -46,9 +52,11 @@ MAIN_MENU_ADMIN = "main_admin"
 ADMIN_MENU_STATS = "admin_stats"
 ADMIN_MENU_BOT_STATS = "admin_bot_stats"
 ADMIN_MENU_SHUTDOWN_BASIC = "admin_shutdown_basic"
+ADMIN_MENU_GET_FEEDBACK = "admin_get_feedback"
 SHUTDOWN_MENU_NORMAL = "shutdown_normal"
 SHUTDOWN_MENU_IMMEDIATE = "shutdown_immediate"
 SHUTDOWN_MENU_BOT = "shutdown_bot"
+READ_MENU_DONE = "confirm__done"
 
 MENU_ABOUT_TEXT = "This bot allow to play in ZPG (https://en.wikipedia.org/wiki/Zero-player_game) \"Idle RPG\", " \
                   "inspired " \
@@ -67,5 +75,6 @@ LOG_QUEUE = "Queue"
 LOG_TELEGRAM = "Telegram"
 
 MAX_MENU_LENGTH = 25
+MAX_FEEDBACK_LENGTH = 2048
 
 PERSIST_LOAD_BATCH = 100
