@@ -613,6 +613,9 @@ def cmd_response_callback(ch, method, properties, body):
     if chat_id is not None:
         if msg.get("cmd_type") == CMD_GET_CHARACTER_STATUS:
             updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("char_info"), reply_markup=reply_markup)
+        elif msg.get("cmd_type") == CMD_FEEDBACK_RECEIVE:
+            updater.dispatcher.bot.send_message(chat_id=chat_id, text=trans.get_message(M_FEEDBACK_SUCCESS),
+                                                reply_markup=reply_markup)
         else:
             updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("message"), reply_markup=reply_markup)
             queue_logger.info("Sent message {0}, received from server to user {1}".format(msg.get("message"), chat_id))

@@ -36,5 +36,6 @@
   "FEEDBACK_TOO_LONG": "Message too long, maximum length {0}",
   "GET_FEEDBACK": "Get feedback message",
   "FEEDBACK_REQUESTED": "Feedback requested",
-  "FEEDBACK_DONE": "mark as read"
+  "FEEDBACK_DONE": "mark as read",
+  "FEEDBACK_SUCCESS": "Your message received and will be read later"
 }
