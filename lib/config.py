@@ -40,6 +40,20 @@ class Config:
             self.logger.info("Password in cypher text, start decryption")
             self.queue_password = decrypt_password(self.queue_password, self.server_name, self.queue_port)
             self.logger.info("Password was decrypted")
+        self.db_name = config.get(CONFIG_PARAM_DB_NAME)
+        self.db_port = config.get(CONFIG_PARAM_DB_PORT)
+        self.db_host = config.get(CONFIG_PARAM_DB_HOST)
+        self.db_user = config.get(CONFIG_PARAM_DB_USER)
+        self.db_password_read = config.get(CONFIG_PARAM_DB_PASSWORD)
+        if is_password_encrypted(self.db_password_read):
+            self.logger.info("DB password encrypted, do nothing")
+            self.db_password = decrypt_password(self.db_password_read, self.server_name, self.db_port)
+        else:
+            self.logger.info("DB password in plain text, start encrypt")
+            password = encrypt_password(self.db_password_read, self.server_name, self.db_port)
+            self._save_db_password(password)
+            self.logger.info("DB password encrypted and save back in config")
+            self.db_password = self.db_password_read
         self.log_level = config.get(CONFIG_PARAM_LOG_LEVEL)
         self.admin_list = config.get(CONFIG_PARAM_ADMIN_LIST)
         self.logger.setLevel(self.log_level)
@@ -65,5 +79,14 @@ class Config:
         fp.close()
         fp = codecs.open(self.file_path, 'w', "utf-8")
         config[CONFIG_PARAM_QUEUE_PASSWORD] = password
+        json.dump(config, fp, indent=2)
+        fp.close()
+
+    def _save_db_password(self, password):
+        fp = codecs.open(self.file_path, 'r', "utf-8")
+        config = json.load(fp)
+        fp.close()
+        fp = codecs.open(self.file_path, 'w', "utf-8")
+        config[CONFIG_PARAM_DB_PASSWORD] = password
         json.dump(config, fp, indent=2)
         fp.close()
