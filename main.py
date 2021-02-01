@@ -288,20 +288,20 @@ def show_bot_stats(update, context):
     global config
     global startup_time
     if update.effective_chat.id in config.admin_list:
+        trans = get_locale(update)
         process = psutil.Process(os.getpid())
         memory_used = round(process.memory_full_info().rss / 1024 ** 2, 2)
         memory_percent = round(process.memory_percent("rss"), 2)
         cpu_times = process.cpu_times()
         cpu_percent = process.cpu_percent()
-        msg = "Bot started at {0} (uptime {1} second).".format(startup_time,
-                                                               datetime.datetime.now().replace(microsecond=0)
-                                                               - startup_time)
+        msg = trans.get_message(M_BOT_UPTIME).format(startup_time, datetime.datetime.now().replace(microsecond=0)
+                                                     - startup_time)
         msg += chr(10)
-        msg += "Used memory: {0} mb, {1} % from total".format(memory_used, memory_percent)
+        msg += trans.get_message(M_BOT_MEMORY_USED).format(memory_used, memory_percent)
         msg += chr(10)
-        msg += "CPU times: {0}".format(cpu_times)
+        msg += trans.get_message(M_BOT_CPU_TIMES).format(cpu_times)
         msg += chr(10)
-        msg += "CPU percent {0}".format(cpu_percent)
+        msg += trans.get_message(M_BOT_CPU_PERCENT).format(cpu_percent)
         msg += chr(10)
         trans = get_locale(update)
         reply_markup = InlineKeyboardMarkup(admin_keyboard(trans))
