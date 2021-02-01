@@ -585,12 +585,12 @@ def dict_response_callback(ch, method, properties, body):
         updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("server_info"), reply_markup=reply_markup)
     elif cmd_type == CMD_SERVER_OK:
         reply_markup = InlineKeyboardMarkup(admin_keyboard(trans))
-        updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg, reply_markup=reply_markup)
+        updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("message"), reply_markup=reply_markup)
     elif cmd_type == CMD_SENT_FEEDBACK:
         reply_markup = InlineKeyboardMarkup(read_keyboard(trans))
         feedback_reading[chat_id] = msg.get("message_id")
         updater.dispatcher.bot.send_message(chat_id=chat_id,
-                                            text="sent by id: {0}, nick: {1} message: {2}, message_id: {3}".
+                                            text=trans.get_message(M_FEEDBACK_STRING).
                                             format(msg.get("user_sent_id"), msg.get("user_sent_nick"),
                                                    msg.get("message"), msg.get("message_id")),
                                             reply_markup=reply_markup)
