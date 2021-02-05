@@ -19,6 +19,7 @@ from lib.persist import Persist
 from lib.utility import get_logger
 
 global class_list
+global class_descriptions
 global out_channel
 global creation_process
 global deletion_process
@@ -288,20 +289,20 @@ def show_bot_stats(update, context):
     global config
     global startup_time
     if update.effective_chat.id in config.admin_list:
+        trans = get_locale(update)
         process = psutil.Process(os.getpid())
         memory_used = round(process.memory_full_info().rss / 1024 ** 2, 2)
         memory_percent = round(process.memory_percent("rss"), 2)
         cpu_times = process.cpu_times()
         cpu_percent = process.cpu_percent()
-        msg = "Bot started at {0} (uptime {1} second).".format(startup_time,
-                                                               datetime.datetime.now().replace(microsecond=0)
-                                                               - startup_time)
+        msg = trans.get_message(M_BOT_UPTIME).format(startup_time, datetime.datetime.now().replace(microsecond=0)
+                                                     - startup_time)
         msg += chr(10)
-        msg += "Used memory: {0} mb, {1} % from total".format(memory_used, memory_percent)
+        msg += trans.get_message(M_BOT_MEMORY_USED).format(memory_used, memory_percent)
         msg += chr(10)
-        msg += "CPU times: {0}".format(cpu_times)
+        msg += trans.get_message(M_BOT_CPU_TIMES).format(cpu_times)
         msg += chr(10)
-        msg += "CPU percent {0}".format(cpu_percent)
+        msg += trans.get_message(M_BOT_CPU_PERCENT).format(cpu_percent)
         msg += chr(10)
         trans = get_locale(update)
         reply_markup = InlineKeyboardMarkup(admin_keyboard(trans))
@@ -358,20 +359,32 @@ def send_shutdown_normal(update, context):
 def class_menu(update, context):
     global creation_process
     global telegram_logger
+    global class_descriptions
     is_correct = False
+    is_restart = False
     if update.effective_chat.id in creation_process.keys():
         if creation_process[update.effective_chat.id]["stage"] == STAGE_SELECT_CLASS:
             is_correct = True
-    if is_correct:
+        elif creation_process[update.effective_chat.id]["stage"] == STAGE_CHOOSE_NAME:
+            is_restart = True
+    if is_correct or is_restart:
         char_class = update["callback_query"]["data"][6:]
         creation_process[update.effective_chat.id]["class"] = char_class
         creation_process[update.effective_chat.id]["stage"] = STAGE_CHOOSE_NAME
         trans = get_locale(update)
+        descr_code = char_class + "_description"
+        if trans.is_message_exists(descr_code):
+            msg = trans.get_message(descr_code)
+            context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
         msg = trans.get_message(M_ENTER_NAME)
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg.
                                  format(trans.get_message(char_class)))
-        telegram_logger.info("Character creation by user {0} advanced to name input stage".
-                             format(update.effective_chat.id))
+        if is_correct:
+            telegram_logger.info("Character creation by user {0} advanced to name input stage".
+                                 format(update.effective_chat.id))
+        else:
+            telegram_logger.info("Character creation by user {0} restarted on name input stage".
+                                 format(update.effective_chat.id))
     else:
         telegram_logger.warning("Character creation by user {0} not advanced to name input stage because of reasons".
                                 format(update.effective_chat.id))
@@ -570,6 +583,17 @@ def class_list_callback(ch, method, properties, body):
                 translations[j].add_message(i, buf[i][j])
 
 
+def class_description_callback(ch, method, properties, body):
+    global class_descriptions
+    global translations
+    class_name = json.loads(body).get("class_name")
+    class_description = json.loads(body).get("class_description")
+    class_stats = json.loads(body).get("class_stats")
+    locale = json.loads(body).get("locale")
+    if locale in translations.keys():
+        translations[locale].add_message(str(class_name) + "_description", class_description + chr(10) + class_stats)
+
+
 def dict_response_callback(ch, method, properties, body):
     global queue_logger
     global feedback_reading
@@ -580,17 +604,19 @@ def dict_response_callback(ch, method, properties, body):
     trans = get_locale(None, chat_id)
     if cmd_type == CMD_SET_CLASS_LIST:
         class_list_callback(ch, method, properties, body)
+    elif cmd_type == CMD_SET_CLASS_DESCRIPTION:
+        class_description_callback(ch, method, properties, body)
     elif cmd_type == CMD_SET_SERVER_STATS:
         reply_markup = InlineKeyboardMarkup(admin_keyboard(trans))
         updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("server_info"), reply_markup=reply_markup)
     elif cmd_type == CMD_SERVER_OK:
         reply_markup = InlineKeyboardMarkup(admin_keyboard(trans))
-        updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg, reply_markup=reply_markup)
+        updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("message"), reply_markup=reply_markup)
     elif cmd_type == CMD_SENT_FEEDBACK:
         reply_markup = InlineKeyboardMarkup(read_keyboard(trans))
         feedback_reading[chat_id] = msg.get("message_id")
         updater.dispatcher.bot.send_message(chat_id=chat_id,
-                                            text="sent by id: {0}, nick: {1} message: {2}, message_id: {3}".
+                                            text=trans.get_message(M_FEEDBACK_STRING).
                                             format(msg.get("user_sent_id"), msg.get("user_sent_nick"),
                                                    msg.get("message"), msg.get("message_id")),
                                             reply_markup=reply_markup)
@@ -637,6 +663,7 @@ def get_mq_connect(mq_config):
 
 def main():
     global class_list
+    global class_descriptions
     global creation_process
     global deletion_process
     global feedback_process
@@ -655,6 +682,7 @@ def main():
 
     is_shutdown = False
     class_list = None
+    class_descriptions = {}
     creation_process = {}
     deletion_process = {}
     feedback_process = {}

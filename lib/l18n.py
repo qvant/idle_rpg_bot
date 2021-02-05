@@ -30,6 +30,9 @@ class L18n:
     def add_message(self, msg_type, msg_text):
         self.msg_map[msg_type] = msg_text
 
+    def is_message_exists(self, msg_type):
+        return msg_type in self.msg_map.keys()
+
     def get_message(self, msg_type):
         if msg_type in self.msg_map.keys():
             msg = self.msg_map[msg_type]

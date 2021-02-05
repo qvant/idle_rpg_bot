@@ -37,5 +37,10 @@
   "GET_FEEDBACK": "Get feedback message",
   "FEEDBACK_REQUESTED": "Feedback requested",
   "FEEDBACK_DONE": "mark as read",
-  "FEEDBACK_SUCCESS": "Your message received and will be read later"
+  "FEEDBACK_SUCCESS": "Your message received and will be read later",
+  "BOT_UPTIME": "Bot started at {0} (uptime {1} second).",
+  "BOT_MEMORY_USED": "Used memory: {0} mb, {1} % from total",
+  "BOT_CPU_TIMES": "CPU times: {0}.",
+  "BOT_CPU_PERCENT": "CPU percent {0}.",
+  "FEEDBACK_STRING": "Sent by \nID: {0}. \nNick: @{1}. \nMessage: {2}.\nMessage_id: {3}"
 }
