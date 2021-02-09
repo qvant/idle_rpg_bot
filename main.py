@@ -79,6 +79,8 @@ def pretty_menu(menu):
 
 def class_keyboard(trans):
     keyboard = []
+    if class_list is None:
+        return None
     for i in class_list:
         keyboard.append(InlineKeyboardButton(trans.get_message(i), callback_data="class_" + str(i)))
     return pretty_menu(keyboard)
@@ -152,12 +154,18 @@ def create(update, context):
     global creation_process
     global telegram_logger
     trans = get_locale(update)
-    msg = trans.get_message(M_CHOOSE_CLASS)
     keyboard = class_keyboard(trans)
+    if keyboard is not None:
+        msg = trans.get_message(M_CHOOSE_CLASS)
+        creation_process[update.effective_chat.id] = {"stage": STAGE_SELECT_CLASS}
+        telegram_logger.info("Initialized character creation from user {0}".format(update.effective_chat.id))
+    else:
+        msg = trans.get_message(M_REPEAT_LATER)
+        keyboard = main_keyboard(update.effective_chat.id, trans)
+        telegram_logger.info("Can't initialize character creation from user {0}, class list is empty".
+                             format(update.effective_chat.id))
     reply_markup = InlineKeyboardMarkup(keyboard)
-    creation_process[update.effective_chat.id] = {"stage": STAGE_SELECT_CLASS}
     context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
-    telegram_logger.info("Initialized character creation from user {0}".format(update.effective_chat.id))
 
 
 def delete(update, context):
@@ -755,15 +763,14 @@ def main():
 
     logger.info("Asked server for class list")
 
-    out_channel.basic_consume(queue=QUEUE_NAME_DICT, on_message_callback=dict_response_callback, auto_ack=True)
-
-    for method_frame, properties, body in out_channel.consume(QUEUE_NAME_DICT, inactivity_timeout=1):
-        if class_list is not None:
-            break
-    out_channel.cancel()
-    logger.info("Class list received")
-
     if args.test_users is not None:
+        out_channel.basic_consume(queue=QUEUE_NAME_DICT, on_message_callback=dict_response_callback, auto_ack=True)
+
+        for method_frame, properties, body in out_channel.consume(QUEUE_NAME_DICT, inactivity_timeout=1):
+            if class_list is not None:
+                break
+        out_channel.cancel()
+        logger.info("Class list received")
         test_start_time = datetime.datetime.now()
         cnt_users = 0
         logger.info("Started create test users")
