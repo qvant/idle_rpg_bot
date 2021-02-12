@@ -1,3 +1,6 @@
+release 6:  
+* bot now can start without receiving class list from server
+
 release 5:  
 * added class descriptions
 * translated stats and admin messages
