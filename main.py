@@ -707,7 +707,6 @@ def main():
     parser.add_argument("--config", '-cfg', help="Path to config file", action="store", default="cfg//main.json")
     parser.add_argument("--test_users", help="Number of test users of each class created", action="store", default=None)
     parser.add_argument("--delay", help="Number of test users of each class created", action="store", default=None)
-    parser.add_argument("--db", help="Path to the user settings storage", action="store", default="user_settings.db")
     args = parser.parse_args()
     if args.delay is not None:
         time.sleep(int(args.delay))
