@@ -1,15 +1,17 @@
 import argparse
 import datetime
 import json
-import psutil
 import os
 import sys
 import time
 
-
 import pika
+import psutil
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, CallbackQueryHandler
+from telegram.ext.callbackcontext import CallbackContext
+from telegram.update import Update
+from typing import List, Dict
 
 from lib.config import Config
 from lib.consts import *
@@ -37,7 +39,7 @@ global startup_time
 global user_settings
 
 
-def get_locale(update, chat_id=None):
+def get_locale(update: Update, chat_id: int = None):
     global user_locales
     global translations
     if update is not None or chat_id is not None:
@@ -56,7 +58,7 @@ def get_locale(update, chat_id=None):
     return translations['ru']
 
 
-def start(update, context):
+def start(update: Update, context: CallbackContext):
     global telegram_logger
     trans = get_locale(update)
     msg = trans.get_message(M_ABOUT_ME)
@@ -65,7 +67,7 @@ def start(update, context):
     telegram_logger.info("Proceed start command from user {0}".format(update.effective_chat.id))
 
 
-def pretty_menu(menu):
+def pretty_menu(menu: List):
     res = [[]]
     cur_menu_len = 0
     for i in menu:
@@ -77,7 +79,7 @@ def pretty_menu(menu):
     return res
 
 
-def class_keyboard(trans):
+def class_keyboard(trans: L18n):
     keyboard = []
     if class_list is None:
         return None
@@ -86,7 +88,7 @@ def class_keyboard(trans):
     return pretty_menu(keyboard)
 
 
-def main_keyboard(chat_id, trans):
+def main_keyboard(chat_id: int, trans: L18n):
     global config
     keyboard = [
         InlineKeyboardButton(trans.get_message(M_NEW_CHARACTER), callback_data=MAIN_MENU_CREATE),
@@ -102,7 +104,7 @@ def main_keyboard(chat_id, trans):
     return pretty_menu(keyboard)
 
 
-def admin_keyboard(trans):
+def admin_keyboard(trans: L18n):
     keyboard = [
         InlineKeyboardButton(trans.get_message(M_SERVER_STATS), callback_data=ADMIN_MENU_STATS),
         InlineKeyboardButton(trans.get_message(M_BOT_STATS), callback_data=ADMIN_MENU_BOT_STATS),
@@ -113,7 +115,7 @@ def admin_keyboard(trans):
     return pretty_menu(keyboard)
 
 
-def read_keyboard(trans):
+def read_keyboard(trans: L18n):
     keyboard = [
         InlineKeyboardButton(trans.get_message(M_FEEDBACK_DONE), callback_data=READ_MENU_DONE)
     ]
@@ -121,7 +123,7 @@ def read_keyboard(trans):
     return pretty_menu(keyboard)
 
 
-def shutdown_keyboard(trans):
+def shutdown_keyboard(trans: L18n):
     keyboard = [
          InlineKeyboardButton(trans.get_message(M_SHUTDOWN_NORMAL), callback_data=SHUTDOWN_MENU_NORMAL),
          InlineKeyboardButton(trans.get_message(M_SHUTDOWN_IMMEDIATE), callback_data=SHUTDOWN_MENU_IMMEDIATE),
@@ -140,7 +142,7 @@ def locale_keyboard():
     return pretty_menu(keyboard)
 
 
-def status(update, context):
+def status(update: Update, context: CallbackContext):
     global telegram_logger
     trans = get_locale(update)
     cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_GET_CHARACTER_STATUS, "locale": trans.code}
@@ -150,7 +152,7 @@ def status(update, context):
     telegram_logger.info("Proceed status command from user {0}".format(update.effective_chat.id))
 
 
-def create(update, context):
+def create(update: Update, context: CallbackContext):
     global creation_process
     global telegram_logger
     trans = get_locale(update)
@@ -168,7 +170,7 @@ def create(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
 
 
-def delete(update, context):
+def delete(update: Update, context: CallbackContext):
     global deletion_process
     global telegram_logger
     deletion_process[update.effective_chat.id] = {"stage": STAGE_CONFIRM_DELETION}
@@ -178,7 +180,7 @@ def delete(update, context):
     telegram_logger.info("Initialized character deletion from user {0}".format(update.effective_chat.id))
 
 
-def settings(update, context):
+def settings(update: Update, context: CallbackContext):
     global telegram_logger
     global translations
     trans = get_locale(update)
@@ -189,7 +191,7 @@ def settings(update, context):
     telegram_logger.info("Sent language settings menu to user {0}".format(update.effective_chat.id))
 
 
-def feedback(update, context):
+def feedback(update: Update, context: CallbackContext):
     global telegram_logger
     global translations
     global feedback_process
@@ -200,7 +202,7 @@ def feedback(update, context):
     telegram_logger.info("Sent feedback prompt to user {0}".format(update.effective_chat.id))
 
 
-def set_locale(update, context):
+def set_locale(update: Update, context: CallbackContext):
     global telegram_logger
     global translations
     global user_locales
@@ -221,10 +223,11 @@ def set_locale(update, context):
         keyboard = main_keyboard(update.effective_chat.id, trans)
         reply_markup = InlineKeyboardMarkup(keyboard)
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
-        telegram_logger.error("Can't set not existent locale {1} for user {0}".format(update.effective_chat.id, language))
+        telegram_logger.error("Can't set not existent locale {1} for user {0}".format(update.effective_chat.id,
+                                                                                      language))
 
 
-def about(update, context):
+def about(update: Update, context: CallbackContext):
     global telegram_logger
     trans = get_locale(update)
     msg = trans.get_message(M_ABOUT_TEXT)
@@ -234,7 +237,7 @@ def about(update, context):
     telegram_logger.info("Sent \"About\" to user {0}".format(update.effective_chat.id))
 
 
-def admin(update, context):
+def admin(update: Update, context: CallbackContext):
     global telegram_logger
     global config
     if update.effective_chat.id in config.admin_list:
@@ -248,7 +251,7 @@ def admin(update, context):
         telegram_logger.error("Illegal access to \"Admin menu\" from user {0}".format(update.effective_chat.id))
 
 
-def shutdown(update, context):
+def shutdown(update: Update, context: CallbackContext):
     global telegram_logger
     global config
     if update.effective_chat.id in config.admin_list:
@@ -262,7 +265,7 @@ def shutdown(update, context):
         telegram_logger.error("Illegal access to \"shutdown menu\" from user {0}".format(update.effective_chat.id))
 
 
-def get_feedback(update, context):
+def get_feedback(update: Update, context: CallbackContext):
     global telegram_logger
     global config
     if update.effective_chat.id in config.admin_list:
@@ -292,7 +295,7 @@ def ask_server_stats(update, context):
         telegram_logger.error("Illegal access to \"ask_server_stats\" from user {0}".format(update.effective_chat.id))
 
 
-def show_bot_stats(update, context):
+def show_bot_stats(update: Update, context: CallbackContext):
     global telegram_logger
     global config
     global startup_time
@@ -320,7 +323,7 @@ def show_bot_stats(update, context):
         telegram_logger.error("Illegal access to \"show_bot_stats\" from user {0}".format(update.effective_chat.id))
 
 
-def send_shutdown_immediate(update, context):
+def send_shutdown_immediate(update: Update, context: CallbackContext):
     global telegram_logger
     global config
     if update.effective_chat.id in config.admin_list:
@@ -335,7 +338,7 @@ def send_shutdown_immediate(update, context):
                               format(update.effective_chat.id))
 
 
-def send_shutdown_bot(update, context):
+def send_shutdown_bot(update: Update, context: CallbackContext):
     global telegram_logger
     global config
     global is_shutdown
@@ -349,7 +352,7 @@ def send_shutdown_bot(update, context):
         telegram_logger.error("Illegal access to \"send_shutdown_bot\" from user {0}".format(update.effective_chat.id))
 
 
-def send_shutdown_normal(update, context):
+def send_shutdown_normal(update: Update, context: CallbackContext):
     global telegram_logger
     global config
     if update.effective_chat.id in config.admin_list:
@@ -364,7 +367,7 @@ def send_shutdown_normal(update, context):
                               format(update.effective_chat.id))
 
 
-def class_menu(update, context):
+def class_menu(update: Update, context: CallbackContext):
     global creation_process
     global telegram_logger
     global class_descriptions
@@ -399,7 +402,7 @@ def class_menu(update, context):
         create(update, context)
 
 
-def read_done(update, context):
+def read_done(update: Update, context: CallbackContext):
     global feedback_reading
     global telegram_logger
     is_correct = False
@@ -421,7 +424,7 @@ def read_done(update, context):
         start(update, context)
 
 
-def main_menu(update, context):
+def main_menu(update: Update, context: CallbackContext):
     global telegram_logger
     global config
     cur_item = update["callback_query"]["data"]
@@ -453,7 +456,7 @@ def main_menu(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command")
 
 
-def admin_menu(update, context):
+def admin_menu(update: Update, context: CallbackContext):
     global telegram_logger
     cur_item = update["callback_query"]["data"]
     telegram_logger.info("Received command {0} from user {1} in admin menu".
@@ -472,7 +475,7 @@ def admin_menu(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command")
 
 
-def shutdown_menu(update, context):
+def shutdown_menu(update: Update, context: CallbackContext):
     global telegram_logger
     cur_item = update["callback_query"]["data"]
     telegram_logger.info("Received command {0} from user {1} in shutdown menu".
@@ -489,7 +492,7 @@ def shutdown_menu(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command")
 
 
-def read_menu(update, context):
+def read_menu(update: Update, context: CallbackContext):
     global telegram_logger
     cur_item = update["callback_query"]["data"]
     telegram_logger.info("Received command {0} from user {1} in read menu".
@@ -502,7 +505,7 @@ def read_menu(update, context):
         context.bot.send_message(chat_id=update.effective_chat.id, text="Unknown command")
 
 
-def enqueue_command(obj, system=False):
+def enqueue_command(obj: Dict, system: bool = False):
     global queue_logger
     global config
     if system:
@@ -525,7 +528,7 @@ def enqueue_command(obj, system=False):
         queue_logger.critical("Error {2} when Sent command {0} in queue {1}".format(msg_body, queue_name, exc))
 
 
-def echo(update, context):
+def echo(update: Update, context: CallbackContext):
     global creation_process
     global deletion_process
     global feedback_process
@@ -579,7 +582,7 @@ def echo(update, context):
         telegram_logger.info("User {0} sent message {1}".format(update.effective_chat.id, update.message.text))
 
 
-def class_list_callback(ch, method, properties, body):
+def class_list_callback(ch, method: pika.spec.Basic.Deliver, properties: pika.BasicProperties, body: bytes):
     global class_list
     global translations
     buf = json.loads(body).get("class_list")
@@ -591,7 +594,7 @@ def class_list_callback(ch, method, properties, body):
                 translations[j].add_message(i, buf[i][j])
 
 
-def class_description_callback(ch, method, properties, body):
+def class_description_callback(ch, method: pika.spec.Basic.Deliver, properties: pika.BasicProperties, body: bytes):
     global class_descriptions
     global translations
     class_name = json.loads(body).get("class_name")
@@ -602,7 +605,7 @@ def class_description_callback(ch, method, properties, body):
         translations[locale].add_message(str(class_name) + "_description", class_description + chr(10) + class_stats)
 
 
-def dict_response_callback(ch, method, properties, body):
+def dict_response_callback(ch, method: pika.spec.Basic.Deliver, properties: pika.BasicProperties, body: bytes):
     global queue_logger
     global feedback_reading
     queue_logger.info("Received server command " + str(body) + ", started callback")
@@ -634,7 +637,7 @@ def dict_response_callback(ch, method, properties, body):
         queue_logger.error("Received unknown server command " + str(body) + ", started callback")
 
 
-def cmd_response_callback(ch, method, properties, body):
+def cmd_response_callback(ch, method: pika.spec.Basic.Deliver, properties: pika.BasicProperties, body: bytes):
     global creation_process
     global deletion_process
     global updater
@@ -660,7 +663,7 @@ def cmd_response_callback(ch, method, properties, body):
             del deletion_process[chat_id]
 
 
-def get_mq_connect(mq_config):
+def get_mq_connect(mq_config: Config):
     if mq_config.queue_password is None:
         return pika.BlockingConnection(pika.ConnectionParameters(host=mq_config.queue_host, port=mq_config.queue_port))
     else:

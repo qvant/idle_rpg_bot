@@ -7,7 +7,7 @@ from .utility import get_logger
 
 
 class Config:
-    def __init__(self, file, reload=False):
+    def __init__(self, file: str, reload: bool = False):
         f = file
         fp = codecs.open(f, 'r', "utf-8")
         config = json.load(fp)
@@ -64,7 +64,7 @@ class Config:
         self.next_reload = datetime.datetime.now()
         self.reloaded = False
 
-    def _save_secret(self, password):
+    def _save_secret(self, password: str):
         fp = codecs.open(self.file_path, 'r', "utf-8")
         config = json.load(fp)
         fp.close()
@@ -73,7 +73,7 @@ class Config:
         json.dump(config, fp, indent=2)
         fp.close()
 
-    def _save_password(self, password):
+    def _save_password(self, password: str):
         fp = codecs.open(self.file_path, 'r', "utf-8")
         config = json.load(fp)
         fp.close()
@@ -82,7 +82,7 @@ class Config:
         json.dump(config, fp, indent=2)
         fp.close()
 
-    def _save_db_password(self, password):
+    def _save_db_password(self, password: str):
         fp = codecs.open(self.file_path, 'r', "utf-8")
         config = json.load(fp)
         fp.close()
