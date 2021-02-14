@@ -53,7 +53,7 @@ def get_locale(update: Update, chat_id: int = None):
                 locale = update.message.from_user.language_code
             user_locales[chat_id] = locale
 
-        if locale in translations.keys():
+        if locale in translations:
             return translations[locale]
     return translations['ru']
 
@@ -152,6 +152,29 @@ def status(update: Update, context: CallbackContext):
     telegram_logger.info("Proceed status command from user {0}".format(update.effective_chat.id))
 
 
+def reset_process(user_id: int,
+                  creation: bool = False,
+                  deletion: bool = False,
+                  feedback_send: bool = False,
+                  feedback_read: bool = False):
+    global creation_process
+    global deletion_process
+    global feedback_process
+    global feedback_reading
+    if not creation:
+        if user_id in creation_process:
+            del creation_process[user_id]
+    if not deletion:
+        if user_id in deletion_process:
+            del deletion_process[user_id]
+    if not feedback_send:
+        if user_id in feedback_process:
+            del feedback_process[user_id]
+    if not feedback_read:
+        if user_id in feedback_reading:
+            del feedback_reading[user_id]
+
+
 def create(update: Update, context: CallbackContext):
     global creation_process
     global telegram_logger
@@ -160,6 +183,7 @@ def create(update: Update, context: CallbackContext):
     if keyboard is not None:
         msg = trans.get_message(M_CHOOSE_CLASS)
         creation_process[update.effective_chat.id] = {"stage": STAGE_SELECT_CLASS}
+        reset_process(user_id=update.effective_chat.id, creation=True)
         telegram_logger.info("Initialized character creation from user {0}".format(update.effective_chat.id))
     else:
         msg = trans.get_message(M_REPEAT_LATER)
@@ -174,6 +198,7 @@ def delete(update: Update, context: CallbackContext):
     global deletion_process
     global telegram_logger
     deletion_process[update.effective_chat.id] = {"stage": STAGE_CONFIRM_DELETION}
+    reset_process(user_id=update.effective_chat.id, deletion=True)
     trans = get_locale(update)
     msg = trans.get_message(M_PRINT_CONFIRM)
     context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
@@ -198,6 +223,7 @@ def feedback(update: Update, context: CallbackContext):
     trans = get_locale(update)
     msg = trans.get_message(M_FEEDBACK_PROMPT)
     feedback_process[update.effective_chat.id] = 1
+    reset_process(user_id=update.effective_chat.id, feedback_send=True)
     context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
     telegram_logger.info("Sent feedback prompt to user {0}".format(update.effective_chat.id))
 
@@ -208,7 +234,7 @@ def set_locale(update: Update, context: CallbackContext):
     global user_locales
     global user_settings
     language = update["callback_query"]["data"][7:]
-    if language in translations.keys():
+    if language in translations:
         user_locales[update.effective_chat.id] = language
         user_settings.set(update.effective_chat.id, language)
         trans = get_locale(update)
@@ -373,7 +399,7 @@ def class_menu(update: Update, context: CallbackContext):
     global class_descriptions
     is_correct = False
     is_restart = False
-    if update.effective_chat.id in creation_process.keys():
+    if update.effective_chat.id in creation_process:
         if creation_process[update.effective_chat.id]["stage"] == STAGE_SELECT_CLASS:
             is_correct = True
         elif creation_process[update.effective_chat.id]["stage"] == STAGE_CHOOSE_NAME:
@@ -382,6 +408,7 @@ def class_menu(update: Update, context: CallbackContext):
         char_class = update["callback_query"]["data"][6:]
         creation_process[update.effective_chat.id]["class"] = char_class
         creation_process[update.effective_chat.id]["stage"] = STAGE_CHOOSE_NAME
+        reset_process(user_id=update.effective_chat.id, creation=True)
         trans = get_locale(update)
         descr_code = char_class + "_description"
         if trans.is_message_exists(descr_code):
@@ -406,7 +433,7 @@ def read_done(update: Update, context: CallbackContext):
     global feedback_reading
     global telegram_logger
     is_correct = False
-    if update.effective_chat.id in feedback_reading.keys():
+    if update.effective_chat.id in feedback_reading:
         is_correct = True
     if is_correct:
         trans = get_locale(update)
@@ -536,7 +563,7 @@ def echo(update: Update, context: CallbackContext):
     telegram_logger.debug("Echo: update: {0}, context {1}".format(update, context))
     trans = get_locale(update, update.effective_chat.id)
     is_correct = False
-    if update.effective_chat.id in creation_process.keys():
+    if update.effective_chat.id in creation_process:
         if creation_process[update.effective_chat.id]["stage"] == STAGE_CHOOSE_NAME:
             if CHARACTER_NAME_MAX_LENGTH < len(update["message"]["text"]):
                 msg = trans.get_message(M_NAME_TOO_LONG).format(CHARACTER_NAME_MAX_LENGTH)
@@ -553,7 +580,7 @@ def echo(update: Update, context: CallbackContext):
                "class": creation_process[update.effective_chat.id].get("class"),
                "locale": trans.code}
         enqueue_command(cmd)
-    elif update.effective_chat.id in deletion_process.keys():
+    elif update.effective_chat.id in deletion_process:
         if deletion_process[update.effective_chat.id]["stage"] == STAGE_CONFIRM_DELETION:
             if update["message"]["text"] == "CONFIRM":
                 cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_DELETE_CHARACTER, "locale": trans.code}
@@ -565,7 +592,7 @@ def echo(update: Update, context: CallbackContext):
                 msg = trans.get_message(M_CANCEL_REQUEST)
                 context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
                 start(update, context)
-    elif update.effective_chat.id in feedback_process.keys():
+    elif update.effective_chat.id in feedback_process:
         if len(update["message"]["text"]) <= MAX_FEEDBACK_LENGTH:
             del feedback_process[update.effective_chat.id]
             cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_FEEDBACK, "locale": trans.code,
@@ -590,7 +617,7 @@ def class_list_callback(ch, method: pika.spec.Basic.Deliver, properties: pika.Ba
     for i in buf:
         class_list.append(i)
         for j in buf[i]:
-            if j in translations.keys():
+            if j in translations:
                 translations[j].add_message(i, buf[i][j])
 
 
@@ -601,7 +628,7 @@ def class_description_callback(ch, method: pika.spec.Basic.Deliver, properties: 
     class_description = json.loads(body).get("class_description")
     class_stats = json.loads(body).get("class_stats")
     locale = json.loads(body).get("locale")
-    if locale in translations.keys():
+    if locale in translations:
         translations[locale].add_message(str(class_name) + "_description", class_description + chr(10) + class_stats)
 
 
@@ -626,6 +653,7 @@ def dict_response_callback(ch, method: pika.spec.Basic.Deliver, properties: pika
     elif cmd_type == CMD_SENT_FEEDBACK:
         reply_markup = InlineKeyboardMarkup(read_keyboard(trans))
         feedback_reading[chat_id] = msg.get("message_id")
+        reset_process(user_id=chat_id, feedback_read=True)
         updater.dispatcher.bot.send_message(chat_id=chat_id,
                                             text=trans.get_message(M_FEEDBACK_STRING).
                                             format(msg.get("user_sent_id"), msg.get("user_sent_nick"),
@@ -657,9 +685,9 @@ def cmd_response_callback(ch, method: pika.spec.Basic.Deliver, properties: pika.
             updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("message"), reply_markup=reply_markup)
             queue_logger.info("Sent message {0}, received from server to user {1}".format(msg.get("message"), chat_id))
         # clear current operations state, if any
-        if chat_id in creation_process.keys():
+        if chat_id in creation_process:
             del creation_process[chat_id]
-        if chat_id in deletion_process.keys():
+        if chat_id in deletion_process:
             del deletion_process[chat_id]
 
 
