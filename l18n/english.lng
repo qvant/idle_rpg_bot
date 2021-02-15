@@ -43,5 +43,8 @@
   "BOT_CPU_TIMES": "CPU times: {0}.",
   "BOT_CPU_PERCENT": "CPU percent {0}.",
   "FEEDBACK_STRING": "Sent by \nID: {0}. \nNick: @{1}. \nMessage: {2}.\nMessage_id: {3}",
-  "REPEAT_LATER": "Please, repeat a bit later."
+  "REPEAT_LATER": "Please, repeat a bit later.",
+  "FEEDBACK_REPLY": "Reply",
+  "PRINT_REPLY": "Please, print your answer",
+  "ADMIN_ANSWER": "Answer from server administrator: {0}"
 }

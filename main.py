@@ -27,6 +27,7 @@ global creation_process
 global deletion_process
 global feedback_process
 global feedback_reading
+global feedback_replying
 global characters
 global updater
 global queue_logger
@@ -117,7 +118,8 @@ def admin_keyboard(trans: L18n):
 
 def read_keyboard(trans: L18n):
     keyboard = [
-        InlineKeyboardButton(trans.get_message(M_FEEDBACK_DONE), callback_data=READ_MENU_DONE)
+        InlineKeyboardButton(trans.get_message(M_FEEDBACK_DONE), callback_data=READ_MENU_DONE),
+        InlineKeyboardButton(trans.get_message(M_FEEDBACK_REPLY), callback_data=READ_MENU_REPLY)
     ]
 
     return pretty_menu(keyboard)
@@ -156,11 +158,13 @@ def reset_process(user_id: int,
                   creation: bool = False,
                   deletion: bool = False,
                   feedback_send: bool = False,
-                  feedback_read: bool = False):
+                  feedback_read: bool = False,
+                  feedback_reply: bool = False):
     global creation_process
     global deletion_process
     global feedback_process
     global feedback_reading
+    global feedback_replying
     if not creation:
         if user_id in creation_process:
             del creation_process[user_id]
@@ -173,6 +177,9 @@ def reset_process(user_id: int,
     if not feedback_read:
         if user_id in feedback_reading:
             del feedback_reading[user_id]
+    if not feedback_replying:
+        if user_id in feedback_replying:
+            del feedback_replying[user_id]
 
 
 def create(update: Update, context: CallbackContext):
@@ -446,9 +453,29 @@ def read_done(update: Update, context: CallbackContext):
                              format(feedback_reading[update.effective_chat.id], update.effective_chat.id))
         del feedback_reading[update.effective_chat.id]
     else:
-        telegram_logger.warning("Reading done failed".
+        telegram_logger.warning("Message expire (on read done), requested new message".
                                 format(update.effective_chat.id))
-        start(update, context)
+        get_feedback(update, context)
+
+
+def read_reply(update: Update, context: CallbackContext):
+    global feedback_reading
+    global feedback_replying
+    global telegram_logger
+    is_correct = False
+    if update.effective_chat.id in feedback_reading:
+        is_correct = True
+    if is_correct:
+        trans = get_locale(update)
+        msg = trans.get_message(M_PRINT_REPLY)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+        telegram_logger.info("Ask for reply on message id {0} user {1}".
+                             format(feedback_reading[update.effective_chat.id], update.effective_chat.id))
+        feedback_replying[update.effective_chat.id] = 1
+    else:
+        telegram_logger.warning("Message expire (on read reply), requested new message".
+                                format(update.effective_chat.id))
+        get_feedback(update, context)
 
 
 def main_menu(update: Update, context: CallbackContext):
@@ -526,6 +553,8 @@ def read_menu(update: Update, context: CallbackContext):
                          format(cur_item, update.effective_chat.id))
     if cur_item == READ_MENU_DONE:
         read_done(update, context)
+    elif cur_item == READ_MENU_REPLY:
+        read_reply(update, context)
     else:
         telegram_logger.error("Received unknown command {0} from user {1} in read menu".
                               format(cur_item, update.effective_chat.id))
@@ -559,6 +588,8 @@ def echo(update: Update, context: CallbackContext):
     global creation_process
     global deletion_process
     global feedback_process
+    global feedback_reading
+    global feedback_replying
     global telegram_logger
     telegram_logger.debug("Echo: update: {0}, context {1}".format(update, context))
     trans = get_locale(update, update.effective_chat.id)
@@ -604,6 +635,15 @@ def echo(update: Update, context: CallbackContext):
             msg = trans.get_message(M_FEEDBACK_TOO_LONG).format(MAX_FEEDBACK_LENGTH)
             reply_markup = InlineKeyboardMarkup(main_keyboard(None, trans))
             context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
+    elif update.effective_chat.id in feedback_replying:
+        if update.effective_chat.id in feedback_reading:
+            cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_REPLY_FEEDBACK, "locale": trans.code,
+                   "message": update["message"]["text"], "message_id": feedback_reading.get(update.effective_chat.id)}
+            msg = trans.get_message(M_FEEDBACK_SUCCESS)
+            context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+            enqueue_command(cmd)
+        else:
+            get_feedback(update, context)
 
     else:
         telegram_logger.info("User {0} sent message {1}".format(update.effective_chat.id, update.message.text))
@@ -681,14 +721,15 @@ def cmd_response_callback(ch, method: pika.spec.Basic.Deliver, properties: pika.
         elif msg.get("cmd_type") == CMD_FEEDBACK_RECEIVE:
             updater.dispatcher.bot.send_message(chat_id=chat_id, text=trans.get_message(M_FEEDBACK_SUCCESS),
                                                 reply_markup=reply_markup)
+        elif msg.get("cmd_type") == CMD_REPLY_FEEDBACK:
+            updater.dispatcher.bot.send_message(chat_id=chat_id,
+                                                text=trans.get_message(M_ADMIN_ANSWER).format(msg.get("message")),
+                                                reply_markup=reply_markup)
         else:
             updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("message"), reply_markup=reply_markup)
             queue_logger.info("Sent message {0}, received from server to user {1}".format(msg.get("message"), chat_id))
         # clear current operations state, if any
-        if chat_id in creation_process:
-            del creation_process[chat_id]
-        if chat_id in deletion_process:
-            del deletion_process[chat_id]
+        reset_process(user_id=chat_id)
 
 
 def get_mq_connect(mq_config: Config):
@@ -707,6 +748,7 @@ def main():
     global deletion_process
     global feedback_process
     global feedback_reading
+    global feedback_replying
     global characters
     global out_channel
     global updater
@@ -726,6 +768,7 @@ def main():
     deletion_process = {}
     feedback_process = {}
     feedback_reading = {}
+    feedback_replying = {}
     characters = {}
     user_locales = {}
     translations = {}
@@ -826,7 +869,7 @@ def main():
                                                                                          method_frame.delivery_tag))
                     cmd_response_callback(None, method_frame, properties, body)
                     out_channel.basic_ack(method_frame.delivery_tag)
-                    logger.info("Received user message " + str(body) + " with delivery_tag " +
+                    logger.info("User message " + str(body) + " with delivery_tag " +
                                 str(method_frame.delivery_tag) + " acknowledged")
                 else:
                     logger.info("No more messages in {0}".format(QUEUE_NAME_RESPONSES))
