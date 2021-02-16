@@ -789,6 +789,7 @@ def main():
     # set_basic_logging(config.log_level)
 
     user_settings = Persist(config)
+    user_settings.check_version()
     user_locales = user_settings.get_all()
 
     for dirpath, dirnames, filenames in os.walk("l18n"):
