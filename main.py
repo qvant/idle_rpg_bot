@@ -303,12 +303,10 @@ def get_feedback(update: Update, context: CallbackContext):
     global config
     if update.effective_chat.id in config.admin_list:
         trans = get_locale(update)
-        msg = trans.get_message(M_GET_FEEDBACK)
+        msg = trans.get_message(M_CMD_SENT)
         cmd = {"user_id": update.effective_chat.id, "cmd_type": CMD_GET_FEEDBACK, "locale": trans.code}
         enqueue_command(cmd, True)
-        keyboard = admin_keyboard(trans)
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
         telegram_logger.info("Sent get_feedback from user {0}".format(update.effective_chat.id))
     else:
         telegram_logger.error("Illegal access to \"feedback menu\" from user {0}".format(update.effective_chat.id))

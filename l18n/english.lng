@@ -46,5 +46,6 @@
   "REPEAT_LATER": "Please, repeat a bit later.",
   "FEEDBACK_REPLY": "Reply",
   "PRINT_REPLY": "Please, print your answer",
-  "ADMIN_ANSWER": "Answer from server administrator: {0}"
+  "ADMIN_ANSWER": "Answer from server administrator: {0}",
+  "CMD_SENT": "Command sent"
 }
