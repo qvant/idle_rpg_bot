@@ -44,6 +44,16 @@ class Persist:
         )
         self.commit()
 
+    def delete(self, telegram_id: int):
+        # TODO: do named binds
+        # Where my MERGE?
+        # check row blocks when on conflict
+        self.cursor.execute(
+            """delete from idle_rpg_bot.user_locales l where l.telegram_id = %s""",
+            (telegram_id,)
+        )
+        self.commit()
+
     def get_all(self):
         locales = {}
         cnt = 0

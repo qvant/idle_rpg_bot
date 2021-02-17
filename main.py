@@ -135,11 +135,13 @@ def shutdown_keyboard(trans: L18n):
     return pretty_menu(keyboard)
 
 
-def locale_keyboard():
+def locale_keyboard(trans: L18n):
     global translations
     keyboard = []
     for i in translations:
-        keyboard.append(InlineKeyboardButton(i, callback_data="LOCALE_" + i))
+        keyboard.append(InlineKeyboardButton(i, callback_data=LOCALE_PREFIX + i))
+    keyboard.append(InlineKeyboardButton(trans.get_message(M_DYNAMIC_LOCALE),
+                                         callback_data=LOCALE_PREFIX + M_DYNAMIC_LOCALE))
 
     return pretty_menu(keyboard)
 
@@ -217,7 +219,7 @@ def settings(update: Update, context: CallbackContext):
     global translations
     trans = get_locale(update)
     msg = trans.get_message(M_CHOOSE_LANGUAGE)
-    keyboard = locale_keyboard()
+    keyboard = locale_keyboard(trans)
     reply_markup = InlineKeyboardMarkup(keyboard)
     context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
     telegram_logger.info("Sent language settings menu to user {0}".format(update.effective_chat.id))
@@ -250,6 +252,15 @@ def set_locale(update: Update, context: CallbackContext):
         reply_markup = InlineKeyboardMarkup(keyboard)
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
         telegram_logger.info("Set locale {1} for user {0}".format(update.effective_chat.id, language))
+    elif language == M_DYNAMIC_LOCALE:
+        del user_locales[update.effective_chat.id]
+        user_settings.delete(update.effective_chat.id)
+        trans = get_locale(update)
+        msg = trans.get_message(M_LANGUAGE_RESET)
+        keyboard = main_keyboard(update.effective_chat.id, trans)
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg, reply_markup=reply_markup)
+        telegram_logger.info("Deleted locale settings for user {0}".format(update.effective_chat.id))
     else:
         trans = get_locale(update)
         msg = trans.get_message(M_INCORRECT_LANGUAGE).format(language)
@@ -807,7 +818,7 @@ def main():
     main_menu_handler = CallbackQueryHandler(main_menu, pattern="main_")
     admin_menu_handler = CallbackQueryHandler(admin_menu, pattern="admin_")
     shutdown_menu_handler = CallbackQueryHandler(shutdown_menu, pattern="shutdown_")
-    locale_menu_handler = CallbackQueryHandler(set_locale, pattern="LOCALE_")
+    locale_menu_handler = CallbackQueryHandler(set_locale, pattern=LOCALE_PREFIX)
     read_menu_handler = CallbackQueryHandler(read_menu, pattern="confirm_")
     echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
     dispatcher.add_handler(start_handler)
