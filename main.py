@@ -245,7 +245,7 @@ def set_locale(update: Update, context: CallbackContext):
     language = update["callback_query"]["data"][7:]
     if language in translations:
         user_locales[update.effective_chat.id] = language
-        user_settings.set(update.effective_chat.id, language)
+        user_settings.set_locale(update.effective_chat.id, language)
         trans = get_locale(update)
         msg = trans.get_message(M_LANGUAGE_CHOSEN).format(language)
         keyboard = main_keyboard(update.effective_chat.id, trans)
@@ -254,7 +254,7 @@ def set_locale(update: Update, context: CallbackContext):
         telegram_logger.info("Set locale {1} for user {0}".format(update.effective_chat.id, language))
     elif language == M_DYNAMIC_LOCALE:
         del user_locales[update.effective_chat.id]
-        user_settings.delete(update.effective_chat.id)
+        user_settings.delete_locale(update.effective_chat.id)
         trans = get_locale(update)
         msg = trans.get_message(M_LANGUAGE_RESET)
         keyboard = main_keyboard(update.effective_chat.id, trans)
@@ -799,7 +799,7 @@ def main():
 
     user_settings = Persist(config)
     user_settings.check_version()
-    user_locales = user_settings.get_all()
+    user_locales = user_settings.get_all_locale()
 
     for dirpath, dirnames, filenames in os.walk("l18n"):
         for lang_file in filenames:

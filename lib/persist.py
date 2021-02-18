@@ -7,6 +7,7 @@ from .utility import get_logger
 PERSIST_VERSION = 1
 PERSIST_NAME = 'idle RPG bot'
 
+
 class Persist:
     def __init__(self, config: Config):
         self.logger = get_logger("LOG_PERSIST", config.log_level)
@@ -31,7 +32,7 @@ class Persist:
         self.logger.info("DB version {0}. Persist version {1}".format(ver, PERSIST_VERSION))
         assert ver == PERSIST_VERSION
 
-    def set(self, telegram_id: int, locale: str):
+    def set_locale(self, telegram_id: int, locale: str):
         # TODO: do named binds
         # Where my MERGE?
         # check row blocks when on conflict
@@ -44,17 +45,14 @@ class Persist:
         )
         self.commit()
 
-    def delete(self, telegram_id: int):
-        # TODO: do named binds
-        # Where my MERGE?
-        # check row blocks when on conflict
+    def delete_locale(self, telegram_id: int):
         self.cursor.execute(
             """delete from idle_rpg_bot.user_locales l where l.telegram_id = %s""",
             (telegram_id,)
         )
         self.commit()
 
-    def get_all(self):
+    def get_all_locale(self):
         locales = {}
         cnt = 0
         self.cursor.execute(
