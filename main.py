@@ -82,7 +82,7 @@ def pretty_menu(menu: List):
 
 def class_keyboard(trans: L18n):
     keyboard = []
-    if class_list is None:
+    if not class_list:
         return None
     for i in class_list:
         keyboard.append(InlineKeyboardButton(trans.get_message(i), callback_data="class_" + str(i)))
@@ -771,7 +771,7 @@ def main():
     global user_settings
 
     is_shutdown = False
-    class_list = None
+    class_list = []
     class_descriptions = {}
     creation_process = {}
     deletion_process = {}
@@ -850,7 +850,7 @@ def main():
         out_channel.basic_consume(queue=QUEUE_NAME_DICT, on_message_callback=dict_response_callback, auto_ack=True)
 
         for method_frame, properties, body in out_channel.consume(QUEUE_NAME_DICT, inactivity_timeout=1):
-            if class_list is not None:
+            if class_list:
                 break
         out_channel.cancel()
         logger.info("Class list received")
