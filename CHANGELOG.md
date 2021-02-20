@@ -1,3 +1,9 @@
+release 7:  
+* small text fixes
+* added ability to reply on user's feedback via telegram
+* small fixes for linter
+* fixed error when two processes started by same user, e.g. creation and deletion 
+
 release 6:  
 * bot now can start without receiving class list from server
 

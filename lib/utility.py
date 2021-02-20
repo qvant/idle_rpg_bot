@@ -2,6 +2,7 @@ import sys
 import logging
 from logging import INFO
 from logging.handlers import RotatingFileHandler
+from typing import Union
 
 FORMATTER = logging.Formatter("[%(levelname)s] [%(name)s] - [%(asctime)s]: %(message)s")
 LOG_DIR = "logs//"
@@ -9,7 +10,7 @@ LOG_DIR = "logs//"
 global log_level
 
 
-def get_console_handler(is_system=False):
+def get_console_handler(is_system: bool = False):
     if is_system:
         console_handler = logging.StreamHandler(sys.stderr)
     else:
@@ -18,13 +19,13 @@ def get_console_handler(is_system=False):
     return console_handler
 
 
-def get_file_handler(logger_name):
+def get_file_handler(logger_name: str):
     file_handler = RotatingFileHandler(LOG_DIR + logger_name + ".log", maxBytes=1024 * 1024, backupCount=10)
     file_handler.setFormatter(FORMATTER)
     return file_handler
 
 
-def get_logger(logger_name, level=INFO, is_system=False):
+def get_logger(logger_name: str, level: Union[int, str] = INFO, is_system: bool = False):
     logger = logging.getLogger(logger_name)
     logger.setLevel(level)
     logger.addHandler(get_console_handler(is_system))
@@ -34,7 +35,7 @@ def get_logger(logger_name, level=INFO, is_system=False):
     return logger
 
 
-def set_basic_logging(logger_name, level=INFO):
+def set_basic_logging(logger_name: str, level: Union[int, str] = INFO):
     logging.basicConfig(format=FORMATTER,
                         level=level,
                         validate=False,

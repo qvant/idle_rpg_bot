@@ -11,13 +11,10 @@ class L18n:
         self.locale = ''
         self.code = ''
         self.encoding = None
-        self.msg_map = []
+        self.msg_map = {}
         self.alternative = None
 
-    def set_encoding(self, encoding):
-        self.encoding = encoding
-
-    def set_locale(self, name):
+    def set_locale(self, name: str):
         self.locale = name
         self.code = name[:2]
         f = "l18n//" + name + ".lng"
@@ -27,13 +24,13 @@ class L18n:
             self.alternative = L18n()
             self.alternative.set_locale(DEFAULT_LOCALE)
 
-    def add_message(self, msg_type, msg_text):
+    def add_message(self, msg_type: str, msg_text: str):
         self.msg_map[msg_type] = msg_text
 
-    def is_message_exists(self, msg_type):
+    def is_message_exists(self, msg_type: str):
         return msg_type in self.msg_map.keys()
 
-    def get_message(self, msg_type):
+    def get_message(self, msg_type: str):
         if msg_type in self.msg_map.keys():
             msg = self.msg_map[msg_type]
         elif self.locale != DEFAULT_LOCALE:
@@ -44,4 +41,3 @@ class L18n:
         if self.encoding is not None:
             msg = str(msg.encode(self.encoding))
         return msg
-

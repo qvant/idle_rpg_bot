@@ -31,6 +31,7 @@ CMD_FEEDBACK_RECEIVE = "feedback_receive"
 CMD_GET_FEEDBACK = "get_feedback"
 CMD_SENT_FEEDBACK = "sent_feedback"
 CMD_CONFIRM_FEEDBACK = "confirm_feedback"
+CMD_REPLY_FEEDBACK = "reply_feedback"
 
 CHARACTER_NAME_MAX_LENGTH = 255
 
@@ -57,7 +58,8 @@ ADMIN_MENU_GET_FEEDBACK = "admin_get_feedback"
 SHUTDOWN_MENU_NORMAL = "shutdown_normal"
 SHUTDOWN_MENU_IMMEDIATE = "shutdown_immediate"
 SHUTDOWN_MENU_BOT = "shutdown_bot"
-READ_MENU_DONE = "confirm__done"
+READ_MENU_DONE = "confirm_done"
+READ_MENU_REPLY = "confirm_reply"
 
 MENU_ABOUT_TEXT = "This bot allow to play in ZPG (https://en.wikipedia.org/wiki/Zero-player_game) \"Idle RPG\", " \
                   "inspired " \
@@ -79,3 +81,5 @@ MAX_MENU_LENGTH = 25
 MAX_FEEDBACK_LENGTH = 2048
 
 PERSIST_LOAD_BATCH = 100
+
+LOCALE_PREFIX = "LOCALE_"
