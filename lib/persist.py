@@ -37,8 +37,8 @@ class Persist:
         # Where my MERGE?
         # check row blocks when on conflict
         self.cursor.execute(
-            """insert into idle_rpg_bot.user_locales as l (telegram_id, locale) 
-                    values(%s, %s) 
+            """insert into idle_rpg_bot.user_locales as l (telegram_id, locale)
+                    values(%s, %s)
                     on conflict (telegram_id) do update
                       set locale = %s where l.telegram_id = %s
             """, (telegram_id, locale, locale, telegram_id)
@@ -57,7 +57,7 @@ class Persist:
         cnt = 0
         self.cursor.execute(
             """
-            select telegram_id, locale from idle_rpg_bot.user_locales 
+            select telegram_id, locale from idle_rpg_bot.user_locales
             """
         )
         for telegram_id, locale in self.cursor:

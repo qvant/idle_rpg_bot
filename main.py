@@ -81,6 +81,7 @@ def pretty_menu(menu: List):
 
 
 def class_keyboard(trans: L18n):
+    global class_list
     keyboard = []
     if not class_list:
         return None
@@ -462,7 +463,7 @@ def read_done(update: Update, context: CallbackContext):
                              format(feedback_reading[update.effective_chat.id], update.effective_chat.id))
         del feedback_reading[update.effective_chat.id]
     else:
-        telegram_logger.warning("Message expire (on read done), requested new message".
+        telegram_logger.warning("Message expire (on read done), requested new message in chat_id {0}".
                                 format(update.effective_chat.id))
         get_feedback(update, context)
 
@@ -482,7 +483,7 @@ def read_reply(update: Update, context: CallbackContext):
                              format(feedback_reading[update.effective_chat.id], update.effective_chat.id))
         feedback_replying[update.effective_chat.id] = 1
     else:
-        telegram_logger.warning("Message expire (on read reply), requested new message".
+        telegram_logger.warning("Message expire (on read reply), requested new message in chat_id {0}".
                                 format(update.effective_chat.id))
         get_feedback(update, context)
 
@@ -710,7 +711,7 @@ def dict_response_callback(ch, method: pika.spec.Basic.Deliver, properties: pika
                                             reply_markup=reply_markup)
     else:
         if chat_id is not None:
-            updater.dispatcher.bot.send_message(chat_id=chat_id, text="Unknown message".format(msg))
+            updater.dispatcher.bot.send_message(chat_id=chat_id, text="Unknown message {0}".format(msg))
         queue_logger.error("Received unknown server command " + str(body) + ", started callback")
 
 
