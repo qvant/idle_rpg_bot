@@ -23,8 +23,9 @@ from lib.consts import MAX_MENU_LENGTH, MAIN_MENU_CREATE, MAIN_MENU_ABOUT, MAIN_
     QUEUE_APP_ID, CHARACTER_NAME_MAX_LENGTH, CMD_CREATE_CHARACTER, CMD_DELETE_CHARACTER, CMD_REPLY_FEEDBACK, \
     MAX_FEEDBACK_LENGTH, \
     CMD_FEEDBACK, CMD_SET_CLASS_LIST, CMD_SET_CLASS_DESCRIPTION, CMD_SET_SERVER_STATS, CMD_SERVER_OK, \
-    CMD_SENT_FEEDBACK,\
-    CMD_FEEDBACK_RECEIVE, LOG_MAIN, LOG_QUEUE, LOG_TELEGRAM, QUEUE_NAME_DICT, QUEUE_NAME_RESPONSES, CMD_GET_CLASS_LIST
+    CMD_SENT_FEEDBACK, \
+    CMD_FEEDBACK_RECEIVE, LOG_MAIN, LOG_QUEUE, LOG_TELEGRAM, QUEUE_NAME_DICT, QUEUE_NAME_RESPONSES, CMD_GET_CLASS_LIST, \
+    CMD_SERVER_STARTUP
 from lib.l18n import L18n
 from lib.messages import M_ADMIN_LABEL, M_BOT_STATS, M_SERVER_STATS, M_SHUTDOWN_LABEL, M_GET_FEEDBACK, \
     M_FEEDBACK_REPLY, \
@@ -34,7 +35,8 @@ from lib.messages import M_ADMIN_LABEL, M_BOT_STATS, M_SERVER_STATS, M_SHUTDOWN_
     M_BOT_UPTIME, M_BOT_MEMORY_USED, M_BOT_CPU_TIMES, M_BOT_CPU_PERCENT, M_SENT_SHUTDOWN_IMMEDIATE, M_SENT_SHUTDOWN, \
     M_SENT_SHUTDOWN_BOT, M_ENTER_NAME, M_FEEDBACK_SENT, M_PRINT_REPLY, M_NAME_TOO_LONG, M_CHECK_NAME, \
     M_SENT_CHAR_DELETE, M_CANCEL_REQUEST, M_FEEDBACK_TOO_LONG, M_FEEDBACK_SUCCESS, M_FEEDBACK_STRING, M_ADMIN_ANSWER, \
-    M_NEW_CHARACTER, M_ABOUT_LABEL, M_DELETE_CHARACTER, M_GET_CHARACTER, M_SETTINGS, M_FEEDBACK, M_ABOUT_ME
+    M_NEW_CHARACTER, M_ABOUT_LABEL, M_DELETE_CHARACTER, M_GET_CHARACTER, M_SETTINGS, M_FEEDBACK, M_ABOUT_ME, \
+    M_SERVER_STARTED_UP, M_BOT_STARTED_UP
 from lib.persist import Persist
 from lib.utility import get_logger
 
@@ -703,6 +705,7 @@ def class_description_callback(ch, method: pika.spec.Basic.Deliver, properties: 
 def dict_response_callback(ch, method: pika.spec.Basic.Deliver, properties: pika.BasicProperties, body: bytes):
     global queue_logger
     global feedback_reading
+    global config
     queue_logger.info("Received server command " + str(body) + ", started callback")
     msg = json.loads(body)
     cmd_type = msg.get("cmd_type")
@@ -718,6 +721,13 @@ def dict_response_callback(ch, method: pika.spec.Basic.Deliver, properties: pika
     elif cmd_type == CMD_SERVER_OK:
         reply_markup = InlineKeyboardMarkup(admin_keyboard(trans))
         updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("message"), reply_markup=reply_markup)
+    elif cmd_type == CMD_SERVER_STARTUP:
+        for i in config.admin_list:
+            trans = get_locale(None, i)
+            reply_markup = InlineKeyboardMarkup(admin_keyboard(trans))
+            updater.dispatcher.bot.send_message(chat_id=i,
+                                                text=trans.get_message(M_SERVER_STARTED_UP).format(msg.get("datetime")),
+                                                reply_markup=reply_markup)
     elif cmd_type == CMD_SENT_FEEDBACK:
         reply_markup = InlineKeyboardMarkup(read_keyboard(trans))
         feedback_reading[chat_id] = msg.get("message_id")
@@ -889,6 +899,13 @@ def main():
     updater.start_polling()
 
     logger.info("Start listen server responses")
+
+    for i in config.admin_list:
+        trans = get_locale(None, i)
+        reply_markup = InlineKeyboardMarkup(admin_keyboard(trans))
+        updater.dispatcher.bot.send_message(chat_id=i,
+                                            text=trans.get_message(M_BOT_STARTED_UP).format(datetime.datetime.now()),
+                                            reply_markup=reply_markup)
     while True:
         try:
             for method_frame, properties, body in out_channel.consume(QUEUE_NAME_RESPONSES, inactivity_timeout=5,
