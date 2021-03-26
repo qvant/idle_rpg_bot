@@ -49,5 +49,7 @@
   "ADMIN_ANSWER": "Answer from server administrator: {0}",
   "CMD_SENT": "Command sent",
   "DYNAMIC_LOCALE": "Dynamic",
-  "LANGUAGE_RESET": "Locale reset to client defined"
+  "LANGUAGE_RESET": "Locale reset to client defined",
+  "SERVER_STARTED_UP": "Server started at {0}",
+  "BOT_STARTED_UP": "Bot started at {0}"
 }
