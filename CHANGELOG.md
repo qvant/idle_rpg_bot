@@ -1,3 +1,7 @@
+release 8:  
+* sent message for admin on server startup
+* major changes for linter
+
 release 7:  
 * small text fixes
 * added ability to reply on user's feedback via telegram
