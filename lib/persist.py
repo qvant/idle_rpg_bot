@@ -4,7 +4,7 @@ from .consts import PERSIST_LOAD_BATCH
 from .utility import get_logger
 
 
-PERSIST_VERSION = 1
+PERSIST_VERSION = 2
 PERSIST_NAME = 'idle RPG bot'
 
 
