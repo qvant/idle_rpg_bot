@@ -66,4 +66,5 @@ class Persist:
             if cnt % PERSIST_LOAD_BATCH == 0:
                 self.logger.info("Was loaded {0} user locales".format(cnt))
         self.logger.info("Was loaded {0} user locale settings".format(cnt))
+        self.commit()
         return locales
