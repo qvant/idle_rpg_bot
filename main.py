@@ -7,7 +7,7 @@ import time
 
 import pika
 import psutil
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, error as tlg_error
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater, CallbackQueryHandler
 from telegram.ext.callbackcontext import CallbackContext
 from telegram.update import Update
@@ -748,25 +748,31 @@ def cmd_response_callback(ch, method: pika.spec.Basic.Deliver, properties: pika.
     global deletion_process
     global updater
     global queue_logger
+    global telegram_logger
     queue_logger.info("Received command " + str(body) + ", started callback")
     msg = json.loads(body)
     chat_id = msg.get("user_id")
     trans = get_locale(None, chat_id)
     reply_markup = InlineKeyboardMarkup(main_keyboard(chat_id, trans))
-    if chat_id is not None:
-        if msg.get("cmd_type") == CMD_GET_CHARACTER_STATUS:
-            updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("char_info"), reply_markup=reply_markup)
-        elif msg.get("cmd_type") == CMD_FEEDBACK_RECEIVE:
-            updater.dispatcher.bot.send_message(chat_id=chat_id, text=trans.get_message(M_FEEDBACK_SUCCESS),
-                                                reply_markup=reply_markup)
-        elif msg.get("cmd_type") == CMD_REPLY_FEEDBACK:
-            updater.dispatcher.bot.send_message(chat_id=chat_id,
-                                                text=trans.get_message(M_ADMIN_ANSWER).format(msg.get("message")),
-                                                reply_markup=reply_markup)
-        else:
-            updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("message"), reply_markup=reply_markup)
-            queue_logger.info("Sent message {0}, received from server to user {1}".format(msg.get("message"), chat_id))
-        # clear current operations state, if any
+    try:
+        if chat_id is not None:
+            if msg.get("cmd_type") == CMD_GET_CHARACTER_STATUS:
+                updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("char_info"), reply_markup=reply_markup)
+            elif msg.get("cmd_type") == CMD_FEEDBACK_RECEIVE:
+                updater.dispatcher.bot.send_message(chat_id=chat_id, text=trans.get_message(M_FEEDBACK_SUCCESS),
+                                                    reply_markup=reply_markup)
+            elif msg.get("cmd_type") == CMD_REPLY_FEEDBACK:
+                updater.dispatcher.bot.send_message(chat_id=chat_id,
+                                                    text=trans.get_message(M_ADMIN_ANSWER).format(msg.get("message")),
+                                                    reply_markup=reply_markup)
+            else:
+                updater.dispatcher.bot.send_message(chat_id=chat_id, text=msg.get("message"), reply_markup=reply_markup)
+                queue_logger.info("Sent message {0}, received from server to user {1}".format(msg.get("message"), chat_id))
+            # clear current operations state, if any
+            reset_process(user_id=chat_id)
+    except tlg_error.BadRequest as exc:
+        telegram_logger.error(exc)
+        telegram_logger.error("for chat id: {0}", format(chat_id))
         reset_process(user_id=chat_id)
 
 
